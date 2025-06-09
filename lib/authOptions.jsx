@@ -11,14 +11,14 @@ export const authOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        username: {},
+        email: {},
         password: {},
       },
       async authorize(credentials) {
         const { data, error } = await supabase
           .from("users")
           .select("*")
-          .eq("username", credentials?.username);
+          .eq("email", credentials?.email);
         const user = data[0];
 
         const passwordCorrect = await bcrypt.compare(

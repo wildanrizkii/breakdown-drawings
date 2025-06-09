@@ -11,14 +11,7 @@ const Header = ({ toggleSidebar, toggleCollapse, isCollapsed = true }) => {
   const pathname = usePathname();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  // const { data: session } = useSession();
-  const { data: session } = {
-    user: {
-      role: "Admin",
-      email: "wildanrizki9560@gmail.com",
-      npm: "6181901064",
-    },
-  };
+  const { data: session } = useSession();
 
   // Breadcrumb configuration
   const getBreadcrumbs = () => {
@@ -159,7 +152,7 @@ const Header = ({ toggleSidebar, toggleCollapse, isCollapsed = true }) => {
                 onClick={() => setShowDropdown(!showDropdown)}
               >
                 <span className="hidden md:block text-gray-700 font-medium">
-                  {session?.user.nama || "..."}
+                  {session?.user.name || "..."}
                 </span>
                 <div
                   className={`h-8 w-8 rounded-full ${getRoleColorClass(
@@ -167,7 +160,7 @@ const Header = ({ toggleSidebar, toggleCollapse, isCollapsed = true }) => {
                   )} flex items-center justify-center text-white shadow-sm`}
                 >
                   <span className="font-medium text-sm">
-                    {getUserInitials(session?.user?.nama)}
+                    {getUserInitials(session?.user?.name)}
                   </span>
                 </div>
               </div>
@@ -183,12 +176,12 @@ const Header = ({ toggleSidebar, toggleCollapse, isCollapsed = true }) => {
                         )} flex items-center justify-center text-white`}
                       >
                         <span className="font-medium text-lg">
-                          {getUserInitials(session?.user?.nama)}
+                          {getUserInitials(session?.user?.name)}
                         </span>
                       </div>
                       <div className="w-full overflow-hidden text-ellipsis">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {session?.user.nama || "..."}
+                          {session?.user.name || "..."}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
                           {session?.user.email}

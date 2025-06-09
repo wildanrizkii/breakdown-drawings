@@ -114,14 +114,7 @@ const Sidebar = ({
   const hoverTimeoutRef = useRef(null);
   const menuRefs = useRef({});
 
-  // const { data: session } = useSession();
-  const { data: session } = {
-    user: {
-      role: "Admin",
-      email: "wildanrizki9560@gmail.com",
-      npm: "6181901064",
-    },
-  };
+  const { data: session } = useSession();
 
   // Get user initials like in header
   const getUserInitials = (name) => {
@@ -446,7 +439,7 @@ const Sidebar = ({
             alt="Logo"
             width={180}
             height={40}
-            className="rounded-lg"
+            className="w-auto"
           />
         </div>
 

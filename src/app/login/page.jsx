@@ -1,7 +1,8 @@
 import React from "react";
+import Login from "@/components/UI/Login";
 
 const page = () => {
-  return <div>Login Page</div>;
+  return <Login />;
 };
 
 export default page;
