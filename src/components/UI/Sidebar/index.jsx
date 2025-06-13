@@ -4,19 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { RiDashboardLine, RiAdminLine } from "react-icons/ri";
-import { BiTask } from "react-icons/bi";
-import { IoChevronUpOutline, IoChevronDownOutline } from "react-icons/io5";
 import {
-  LuUsers,
-  LuBookOpen,
-  LuSettings,
-  LuClock,
-  LuBell,
-  LuPackage,
-  LuHammer,
-  LuRuler,
-} from "react-icons/lu";
-import { HiAcademicCap } from "react-icons/hi";
+  IoChevronUpOutline,
+  IoChevronDownOutline,
+  IoSettingsOutline,
+} from "react-icons/io5";
+import { LuPackage, LuHammer, LuRuler } from "react-icons/lu";
+import { PiToolbox } from "react-icons/pi";
+import { VscTools } from "react-icons/vsc";
+import { FiInfo } from "react-icons/fi";
 import { AiOutlineDatabase } from "react-icons/ai";
 import { LiaDatabaseSolid } from "react-icons/lia";
 import { useSession } from "next-auth/react";
@@ -34,14 +30,14 @@ const NAVIGATION_ITEMS = [
     name: "Manage Part",
     href: "/manage-part",
     subpaths: ["/manage-part"],
-    icon: <LuBookOpen size={22} />,
+    icon: <VscTools size={22} />,
     roles: ["Admin"],
     hasSubmenu: true,
     submenu: [
       {
-        name: "No Part",
-        href: "/manage-part/No Part",
-        icon: <LuPackage size={22} />,
+        name: "Main Part",
+        href: "/manage-part/main-part",
+        icon: <PiToolbox size={22} />,
       },
       {
         name: "Material",
@@ -87,16 +83,16 @@ const NAVIGATION_ITEMS = [
   },
   {
     name: "Settings",
-    href: "/setting",
-    subpaths: ["/setting/users"],
-    icon: <LuUsers size={22} />,
+    href: "/settinsg",
+    subpaths: ["/settings/users"],
+    icon: <IoSettingsOutline size={22} />,
     roles: ["Admin"],
   },
   {
     name: "About",
     href: "/about",
     subpaths: ["/about"],
-    icon: <HiAcademicCap size={22} />,
+    icon: <FiInfo size={22} />,
     roles: ["Admin"],
   },
 ];
@@ -115,44 +111,6 @@ const Sidebar = ({
   const menuRefs = useRef({});
 
   const { data: session } = useSession();
-
-  // Get user initials like in header
-  const getUserInitials = (name) => {
-    if (!name) return "?";
-    const names = name.trim().split(/\s+/);
-    if (names.length >= 2) {
-      return (names[0].charAt(0) + names[1].charAt(0)).toUpperCase();
-    }
-    return names[0].charAt(0).toUpperCase();
-  };
-
-  // Get role color class like in header
-  const getRoleColorClass = (role) => {
-    switch (role) {
-      case "Admin":
-        return "bg-red-500";
-      case "Dosen":
-        return "bg-green-500";
-      case "Mahasiswa":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  // Get role badge class like in header
-  const getRoleBadgeClass = (role) => {
-    switch (role) {
-      case "Admin":
-        return "bg-red-100 text-red-800";
-      case "Dosen":
-        return "bg-green-100 text-green-800";
-      case "Mahasiswa":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
 
   // Function to toggle collapsed state
   const handleToggleCollapse = () => {
@@ -228,7 +186,7 @@ const Sidebar = ({
 
   // Memoize filtered navigation untuk optimasi performa
   const filteredNavigation = useMemo(() => {
-    const userRole = session?.user?.role || "Admin";
+    const userRole = "Admin";
     if (!userRole) return [];
 
     return NAVIGATION_ITEMS.filter((item) => item.roles.includes(userRole));

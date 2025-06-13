@@ -8,7 +8,12 @@ import {
   Tag,
   Plus,
   Search,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Minus,
 } from "lucide-react";
+import supabase from "@/app/utils/db";
 
 const ImageTaggingApp = () => {
   const [uploadedImage, setUploadedImage] = useState(null);
@@ -26,35 +31,151 @@ const ImageTaggingApp = () => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // New states for multi-item selection
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [editingTag, setEditingTag] = useState(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const fileInputRef = useRef(null);
   const searchInputRef = useRef(null);
   const dropZoneRef = useRef(null);
 
-  // Database items (simulasi database sparepart motor)
-  const databaseItems = [
-    { id: 1, name: "Ban Dalam", color: "#3B82F6", code: "BD001" },
-    { id: 2, name: "Ban Luar", color: "#EF4444", code: "BL002" },
-    { id: 3, name: "Rem Cakram", color: "#10B981", code: "RC003" },
-    { id: 4, name: "Kampas Rem", color: "#F59E0B", code: "KR004" },
-    { id: 5, name: "Oli Mesin", color: "#8B5CF6", code: "OM005" },
-    { id: 6, name: "Filter Udara", color: "#EC4899", code: "FU006" },
-    { id: 7, name: "Busi", color: "#06B6D4", code: "BS007" },
-    { id: 8, name: "Rantai Motor", color: "#84CC16", code: "RM008" },
-    { id: 9, name: "Gear Set", color: "#DC2626", code: "GS009" },
-    { id: 10, name: "Kopling", color: "#7C3AED", code: "KP010" },
-    { id: 11, name: "Karburator", color: "#059669", code: "KB011" },
-    { id: 12, name: "CDI", color: "#D97706", code: "CD012" },
-    { id: 13, name: "Spion", color: "#BE185D", code: "SP013" },
-    { id: 14, name: "Lampu Depan", color: "#0891B2", code: "LD014" },
-    { id: 15, name: "Shockbreaker", color: "#65A30D", code: "SB015" },
-    { id: 16, name: "Velg", color: "#DC2626", code: "VG016" },
-    { id: 17, name: "Jok Motor", color: "#7C2D12", code: "JM017" },
-    { id: 18, name: "Knalpot", color: "#374151", code: "KN018" },
-    { id: 19, name: "Aki Motor", color: "#1E40AF", code: "AM019" },
-    { id: 20, name: "Speedometer", color: "#BE123C", code: "SM020" },
-  ];
+  // Database items from main_part with joins
+  const [databaseItems, setDatabaseItems] = useState([]);
+
+  const fetchMainParts = async () => {
+    try {
+      // Fetch all related data in parallel
+      const [
+        { data: mainPartData, error: mainPartError },
+        { data: honda },
+        { data: cmw },
+        { data: unit },
+        { data: eq_supply },
+        { data: material },
+        { data: import_data },
+        { data: lokal },
+        { data: maker },
+      ] = await Promise.all([
+        supabase.from("main_part").select("*"),
+        supabase.from("honda").select("id_honda, nama").order("nama"),
+        supabase.from("cmw").select("id_cmw, nama").order("nama"),
+        supabase.from("unit").select("id_unit, nama").order("nama"),
+        supabase
+          .from("eq_supply_1")
+          .select("id_eq_supply_1, nama")
+          .order("nama"),
+        supabase.from("material").select("id_material, nama").order("nama"),
+        supabase.from("import").select("id_import, nama").order("nama"),
+        supabase.from("lokal").select("id_lokal, nama").order("nama"),
+        supabase.from("maker").select("id_maker, nama").order("nama"),
+      ]);
+
+      if (mainPartError) throw mainPartError;
+
+      // Create lookup maps for better performance
+      const hondaMap = new Map(
+        honda?.map((item) => [item.id_honda, item.nama]) || []
+      );
+      const cmwMap = new Map(
+        cmw?.map((item) => [item.id_cmw, item.nama]) || []
+      );
+      const unitMap = new Map(
+        unit?.map((item) => [item.id_unit, item.nama]) || []
+      );
+      const eqSupplyMap = new Map(
+        eq_supply?.map((item) => [item.id_eq_supply_1, item.nama]) || []
+      );
+      const materialMap = new Map(
+        material?.map((item) => [item.id_material, item.nama]) || []
+      );
+      const importMap = new Map(
+        import_data?.map((item) => [item.id_import, item.nama]) || []
+      );
+      const lokalMap = new Map(
+        lokal?.map((item) => [item.id_lokal, item.nama]) || []
+      );
+      const makerMap = new Map(
+        maker?.map((item) => [item.id_maker, item.nama]) || []
+      );
+
+      const dataMaster = mainPartData.map((row, index) => ({
+        id: row.id || `main_part_${index}`,
+        partName: row.part_name || "Unknown Part",
+        partNo: row.part_no || "No Part Number",
+        quantity: row.quantity || 0,
+        // Original IDs
+        idHonda: row.id_honda,
+        idCmw: row.id_cmw,
+        idUnit: row.id_unit,
+        idEqSupply1: row.id_eq_supply_1,
+        idMaterial: row.id_material,
+        idImport: row.id_import,
+        idLokal: row.id_lokal,
+        idMaker: row.id_maker,
+        // Resolved names
+        hondaName: hondaMap.get(row.id_honda) || "-",
+        cmwName: cmwMap.get(row.id_cmw) || "-",
+        unitName: unitMap.get(row.id_unit) || "-",
+        eqSupplyName: eqSupplyMap.get(row.id_eq_supply_1) || "-",
+        materialName: materialMap.get(row.id_material) || "-",
+        importName: importMap.get(row.id_import) || "-",
+        lokalName: lokalMap.get(row.id_lokal) || "-",
+        makerName: makerMap.get(row.id_maker) || "-",
+        color: "#3B82F6", // Default color
+      }));
+
+      // Filter out items with invalid/duplicate IDs and ensure unique keys
+      const uniqueItems = dataMaster.filter(
+        (item, index, arr) =>
+          item.id && arr.findIndex((i) => i.id === item.id) === index
+      );
+
+      setDatabaseItems(uniqueItems);
+    } catch (error) {
+      console.error("Error fetching main_part data: ", error);
+      alert("Error fetching main_part data: " + error.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchMainParts();
+  }, []);
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(cart.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = cart.slice(startIndex, endIndex);
+
+  // Reset to first page when cart changes significantly
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [cart.length, currentPage, totalPages]);
+
+  // Pagination functions
+  const goToPage = (page) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   // Drag and Drop handlers
   const handleDragEnter = (e) => {
@@ -67,7 +188,6 @@ const ImageTaggingApp = () => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Only set isDragOver to false if we're leaving the drop zone entirely
     if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget)) {
       setIsDragOver(false);
     }
@@ -88,7 +208,6 @@ const ImageTaggingApp = () => {
     if (files && files[0]) {
       const file = files[0];
 
-      // Check if it's an image file
       if (file.type.startsWith("image/")) {
         processImageFile(file);
       } else {
@@ -103,8 +222,8 @@ const ImageTaggingApp = () => {
       setUploadedImage(e.target.result);
       setTags([]);
       setCart([]);
+      setCurrentPage(1);
 
-      // Dapatkan ukuran natural image untuk perhitungan posisi yang konsisten
       const img = new Image();
       img.onload = () => {
         setImageNaturalSize({
@@ -130,41 +249,35 @@ const ImageTaggingApp = () => {
     const img = event.target;
     const rect = img.getBoundingClientRect();
 
-    // Koordinat klik relatif terhadap elemen img
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
 
-    // Hitung persentase posisi relatif terhadap ukuran gambar yang ditampilkan
     const percentageX = clickX / img.clientWidth;
     const percentageY = clickY / img.clientHeight;
 
-    // Koordinat untuk canvas (ukuran asli gambar)
     const canvasX = percentageX * imageNaturalSize.width;
     const canvasY = percentageY * imageNaturalSize.height;
 
-    // Hitung posisi dropdown yang smart agar tidak keluar dari bounds
-    const dropdownWidth = 280; // sesuai dengan minWidth dropdown
-    const dropdownHeight = 320; // perkiraan tinggi dropdown
+    const dropdownWidth = 360;
+    const dropdownHeight = 480;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
     let dropdownX = event.clientX;
     let dropdownY = event.clientY;
 
-    // Adjust horizontal position
     if (dropdownX + dropdownWidth > viewportWidth) {
-      dropdownX = viewportWidth - dropdownWidth - 10; // 10px margin
+      dropdownX = viewportWidth - dropdownWidth - 10;
     }
     if (dropdownX < 10) {
-      dropdownX = 10; // 10px margin from left
+      dropdownX = 10;
     }
 
-    // Adjust vertical position
     if (dropdownY + dropdownHeight > viewportHeight) {
-      dropdownY = viewportHeight - dropdownHeight - 10; // 10px margin
+      dropdownY = viewportHeight - dropdownHeight - 10;
     }
     if (dropdownY < 10) {
-      dropdownY = 10; // 10px margin from top
+      dropdownY = 10;
     }
 
     setDropdownPosition({
@@ -175,13 +288,25 @@ const ImageTaggingApp = () => {
       percentageX: percentageX,
       percentageY: percentageY,
     });
-    setSearchQuery(""); // Reset search query
+    setSearchQuery("");
+    setSelectedItems([]);
+    setEditingTag(null);
     setShowDropdown(true);
   };
 
-  // Filter items berdasarkan search query
-  const filteredItems = databaseItems.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter items berdasarkan search query (search by part_name, honda name, or cmw name)
+  const filteredItems = databaseItems.filter(
+    (item) =>
+      item.partName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.hondaName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.cmwName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.partNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.unitName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.eqSupplyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.materialName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.importName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.lokalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.makerName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Handle mouse events untuk drag functionality
@@ -195,7 +320,6 @@ const ImageTaggingApp = () => {
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
 
-    // Hitung offset dari center tag
     const tag = tags.find((t) => t.id === tagId);
     if (tag) {
       const currentDisplayX = tag.percentageX * imageRef.current.clientWidth;
@@ -206,7 +330,7 @@ const ImageTaggingApp = () => {
         x: offsetX - currentDisplayX,
         y: offsetY - currentDisplayY,
       });
-      setSelectedTagIndex(null); // Close popup when dragging
+      setSelectedTagIndex(null);
     }
   };
 
@@ -218,19 +342,15 @@ const ImageTaggingApp = () => {
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
 
-    // Hitung posisi baru dengan drag offset
     const newX = offsetX - dragOffset.x;
     const newY = offsetY - dragOffset.y;
 
-    // Clamp ke dalam bounds gambar
     const clampedX = Math.max(0, Math.min(newX, imageRef.current.clientWidth));
     const clampedY = Math.max(0, Math.min(newY, imageRef.current.clientHeight));
 
-    // Convert ke percentage
     const newPercentageX = clampedX / imageRef.current.clientWidth;
     const newPercentageY = clampedY / imageRef.current.clientHeight;
 
-    // Update posisi tag
     setTags((prev) =>
       prev.map((tag) =>
         tag.id === draggedTag
@@ -251,7 +371,6 @@ const ImageTaggingApp = () => {
     setDragOffset({ x: 0, y: 0 });
   };
 
-  // Add event listeners untuk mouse events
   useEffect(() => {
     if (draggedTag) {
       document.addEventListener("mousemove", handleMouseMove);
@@ -264,75 +383,147 @@ const ImageTaggingApp = () => {
     }
   }, [draggedTag, dragOffset]);
 
-  const handleItemSelect = (item) => {
+  // New functions for multi-item selection
+  const toggleItemSelection = (item) => {
+    setSelectedItems((prev) => {
+      const isSelected = prev.find((selected) => selected.id === item.id);
+      if (isSelected) {
+        return prev.filter((selected) => selected.id !== item.id);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+
+  const createTagWithSelectedItems = () => {
+    if (selectedItems.length === 0) return;
+
     const newTag = {
       id: Date.now(),
       canvasX: dropdownPosition.canvasX,
       canvasY: dropdownPosition.canvasY,
       percentageX: dropdownPosition.percentageX,
       percentageY: dropdownPosition.percentageY,
-      item: item,
+      items: [...selectedItems], // Array of items instead of single item
     };
 
     setTags((prev) => [...prev, newTag]);
 
-    // Langsung tambahkan ke keranjang
-    const existingItem = cart.find((cartItem) => cartItem.id === item.id);
-    if (existingItem) {
-      setCart((prev) =>
-        prev.map((cartItem) =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem
-        )
-      );
-    } else {
-      setCart((prev) => [...prev, { ...item, quantity: 1 }]);
-    }
+    // Add all selected items to cart
+    selectedItems.forEach((item) => {
+      const existingItem = cart.find((cartItem) => cartItem.id === item.id);
+      if (existingItem) {
+        setCart((prev) =>
+          prev.map((cartItem) =>
+            cartItem.id === item.id
+              ? { ...cartItem, quantity: cartItem.quantity + 1 }
+              : cartItem
+          )
+        );
+      } else {
+        setCart((prev) => [...prev, { ...item, quantity: 1 }]);
+      }
+    });
 
+    setSelectedItems([]);
     setShowDropdown(false);
   };
 
-  const addToCart = (tag) => {
-    const existingItem = cart.find((item) => item.id === tag.item.id);
-    if (existingItem) {
-      setCart((prev) =>
-        prev.map((item) =>
-          item.id === tag.item.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart((prev) => [...prev, { ...tag.item, quantity: 1 }]);
+  const editTag = (tag) => {
+    setSelectedItems([...tag.items]);
+    setEditingTag(tag.id);
+    setDropdownPosition({
+      x: window.innerWidth / 2 - 160,
+      y: window.innerHeight / 2 - 200,
+      canvasX: tag.canvasX,
+      canvasY: tag.canvasY,
+      percentageX: tag.percentageX,
+      percentageY: tag.percentageY,
+    });
+    setSearchQuery("");
+    setShowDropdown(true);
+  };
+
+  const updateTag = () => {
+    if (selectedItems.length === 0 || !editingTag) return;
+
+    const oldTag = tags.find((tag) => tag.id === editingTag);
+
+    // Remove old items from cart
+    if (oldTag) {
+      oldTag.items.forEach((item) => {
+        const existingItem = cart.find((cartItem) => cartItem.id === item.id);
+        if (existingItem) {
+          if (existingItem.quantity > 1) {
+            setCart((prev) =>
+              prev.map((cartItem) =>
+                cartItem.id === item.id
+                  ? { ...cartItem, quantity: cartItem.quantity - 1 }
+                  : cartItem
+              )
+            );
+          } else {
+            setCart((prev) =>
+              prev.filter((cartItem) => cartItem.id !== item.id)
+            );
+          }
+        }
+      });
     }
+
+    // Update tag with new items
+    setTags((prev) =>
+      prev.map((tag) =>
+        tag.id === editingTag ? { ...tag, items: [...selectedItems] } : tag
+      )
+    );
+
+    // Add new items to cart
+    selectedItems.forEach((item) => {
+      const existingItem = cart.find((cartItem) => cartItem.id === item.id);
+      if (existingItem) {
+        setCart((prev) =>
+          prev.map((cartItem) =>
+            cartItem.id === item.id
+              ? { ...cartItem, quantity: cartItem.quantity + 1 }
+              : cartItem
+          )
+        );
+      } else {
+        setCart((prev) => [...prev, { ...item, quantity: 1 }]);
+      }
+    });
+
+    setSelectedItems([]);
+    setEditingTag(null);
+    setShowDropdown(false);
   };
 
   const removeTag = (tagId) => {
-    // Cari tag yang akan dihapus untuk mendapatkan item info
     const tagToRemove = tags.find((tag) => tag.id === tagId);
 
     if (tagToRemove) {
-      // Kurangi quantity item di keranjang atau hapus jika quantity = 1
-      const existingItem = cart.find((item) => item.id === tagToRemove.item.id);
-      if (existingItem) {
-        if (existingItem.quantity > 1) {
-          setCart((prev) =>
-            prev.map((item) =>
-              item.id === tagToRemove.item.id
-                ? { ...item, quantity: item.quantity - 1 }
-                : item
-            )
-          );
-        } else {
-          setCart((prev) =>
-            prev.filter((item) => item.id !== tagToRemove.item.id)
-          );
+      // Remove all items from this tag from cart
+      tagToRemove.items.forEach((item) => {
+        const existingItem = cart.find((cartItem) => cartItem.id === item.id);
+        if (existingItem) {
+          if (existingItem.quantity > 1) {
+            setCart((prev) =>
+              prev.map((cartItem) =>
+                cartItem.id === item.id
+                  ? { ...cartItem, quantity: cartItem.quantity - 1 }
+                  : cartItem
+              )
+            );
+          } else {
+            setCart((prev) =>
+              prev.filter((cartItem) => cartItem.id !== item.id)
+            );
+          }
         }
-      }
+      });
     }
 
-    // Hapus tag
     setTags((prev) => prev.filter((tag) => tag.id !== tagId));
   };
 
@@ -359,7 +550,6 @@ const ImageTaggingApp = () => {
     const ctx = canvas.getContext("2d");
     const img = new Image();
 
-    // Helper function untuk rounded rectangle
     const roundRect = (ctx, x, y, width, height, radius) => {
       ctx.beginPath();
       ctx.moveTo(x + radius, y);
@@ -383,16 +573,13 @@ const ImageTaggingApp = () => {
       canvas.width = img.width;
       canvas.height = img.height;
 
-      // Gambar image asli
       ctx.drawImage(img, 0, 0);
 
-      // Hitung skala untuk ukuran elemen berdasarkan resolusi gambar
-      const scaleFactor = Math.min(img.width, img.height) / 500; // Base scale untuk resolusi 500px
-      const minScale = 1; // Minimum scale factor
-      const maxScale = 8; // Maximum scale factor
+      const scaleFactor = Math.min(img.width, img.height) / 500;
+      const minScale = 1;
+      const maxScale = 8;
       const scale = Math.max(minScale, Math.min(maxScale, scaleFactor));
 
-      // Gambar tags
       tags.forEach((tag, index) => {
         const radius = 15 * scale;
         const strokeWidth = 4 * scale;
@@ -403,7 +590,7 @@ const ImageTaggingApp = () => {
         const padding = 12 * scale;
         const borderRadius = 8 * scale;
 
-        // Gambar shadow untuk tag circle
+        // Draw shadow for tag circle
         ctx.beginPath();
         ctx.arc(
           tag.canvasX + 2 * scale,
@@ -415,7 +602,10 @@ const ImageTaggingApp = () => {
         ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
         ctx.fill();
 
-        // Gambar lingkaran tag dengan gradient effect
+        // Use color from first item or default color
+        const tagColor = tag.items[0]?.color || "#3B82F6";
+
+        // Draw tag circle with gradient
         const gradient = ctx.createRadialGradient(
           tag.canvasX - radius * 0.3,
           tag.canvasY - radius * 0.3,
@@ -424,15 +614,14 @@ const ImageTaggingApp = () => {
           tag.canvasY,
           radius
         );
-        gradient.addColorStop(0, tag.item.color + "FF");
-        gradient.addColorStop(1, tag.item.color + "CC");
+        gradient.addColorStop(0, tagColor + "FF");
+        gradient.addColorStop(1, tagColor + "CC");
 
         ctx.beginPath();
         ctx.arc(tag.canvasX, tag.canvasY, radius, 0, 2 * Math.PI);
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // Border dengan efek glow
         ctx.strokeStyle = "#FFFFFF";
         ctx.lineWidth = strokeWidth;
         ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
@@ -440,13 +629,12 @@ const ImageTaggingApp = () => {
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // Gambar nomor dengan efek shadow
+        // Draw number
         ctx.fillStyle = "#FFFFFF";
         ctx.font = `bold ${numberFontSize}px Arial, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Shadow untuk text
         ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
         ctx.shadowBlur = 3 * scale;
         ctx.shadowOffsetX = 1 * scale;
@@ -456,11 +644,23 @@ const ImageTaggingApp = () => {
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
 
-        // Gambar label
-        const labelText = tag.item.name;
-        const codeText = `Kode: ${tag.item.code}`;
+        // Create label text for multiple items
+        const itemNames = tag.items.map((item) => item.partName).join(", ");
+        const labelText =
+          tag.items.length > 1
+            ? `${tag.items.length} Items: ${
+                itemNames.length > 30
+                  ? itemNames.substring(0, 30) + "..."
+                  : itemNames
+              }`
+            : tag.items[0].partName;
 
-        // Ukur teks untuk menentukan ukuran background
+        const codeText =
+          tag.items.length > 1
+            ? `${tag.items.length} items selected`
+            : `Part No: ${tag.items[0].partNo}`;
+
+        // Measure text
         ctx.font = `bold ${labelFontSize}px Arial, sans-serif`;
         const labelWidth = ctx.measureText(labelText).width;
         ctx.font = `${priceFontSize}px Arial, sans-serif`;
@@ -469,14 +669,13 @@ const ImageTaggingApp = () => {
         const maxTextWidth = Math.max(labelWidth, codeWidth);
         const labelHeight = labelFontSize + priceFontSize + padding * 1.5;
 
-        // Konversi displayX/Y ke canvas coordinates untuk bounds checking
+        // Position calculations (same as before)
         const imageDisplayWidth = imageRef.current?.clientWidth || img.width;
         const imageDisplayHeight = imageRef.current?.clientHeight || img.height;
 
         const displayXInCanvas = tag.percentageX * img.width;
         const displayYInCanvas = tag.percentageY * img.height;
 
-        // Cek bounds untuk label positioning
         const wouldExceedRight =
           displayXInCanvas + maxTextWidth + padding * 2 + labelOffset >
           img.width;
@@ -484,33 +683,24 @@ const ImageTaggingApp = () => {
           displayYInCanvas + labelHeight / 2 > img.height;
         const wouldExceedTop = displayYInCanvas - labelHeight / 2 < 0;
 
-        // Tentukan posisi label
         let labelX, labelY, textAlign;
 
-        // Horizontal positioning
         if (wouldExceedRight) {
-          // Label di kiri
           labelX = tag.canvasX - labelOffset;
           textAlign = "right";
         } else {
-          // Label di kanan (default)
           labelX = tag.canvasX + labelOffset;
           textAlign = "left";
         }
 
-        // Vertical positioning
         if (wouldExceedBottom && !wouldExceedTop) {
-          // Label di atas
           labelY = displayYInCanvas - labelOffset;
         } else if (wouldExceedTop && !wouldExceedBottom) {
-          // Label di bawah
           labelY = displayYInCanvas + labelOffset;
         } else {
-          // Label di tengah (default)
           labelY = displayYInCanvas;
         }
 
-        // Hitung posisi background berdasarkan alignment
         let bgX, bgY;
         if (textAlign === "right") {
           bgX = labelX - maxTextWidth - padding * 2;
@@ -519,7 +709,7 @@ const ImageTaggingApp = () => {
         }
         bgY = labelY - labelHeight / 2;
 
-        // Gambar shadow untuk background label
+        // Draw shadow for background
         ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
         roundRect(
           ctx,
@@ -531,7 +721,7 @@ const ImageTaggingApp = () => {
         );
         ctx.fill();
 
-        // Gambar background label dengan gradient
+        // Draw background
         const labelGradient = ctx.createLinearGradient(
           bgX,
           bgY,
@@ -552,7 +742,6 @@ const ImageTaggingApp = () => {
         );
         ctx.fill();
 
-        // Border untuk background
         ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
         ctx.lineWidth = 1 * scale;
         roundRect(
@@ -565,13 +754,12 @@ const ImageTaggingApp = () => {
         );
         ctx.stroke();
 
-        // Gambar nama produk
+        // Draw text
         ctx.fillStyle = "#FFFFFF";
         ctx.font = `bold ${labelFontSize}px Arial, sans-serif`;
         ctx.textAlign = textAlign === "right" ? "right" : "left";
         ctx.textBaseline = "top";
 
-        // Shadow untuk nama produk
         ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
         ctx.shadowBlur = 2 * scale;
         ctx.shadowOffsetX = 1 * scale;
@@ -580,8 +768,7 @@ const ImageTaggingApp = () => {
         const nameX = textAlign === "right" ? labelX - padding : labelX;
         ctx.fillText(labelText, nameX, bgY + padding);
 
-        // Gambar kode item
-        ctx.fillStyle = "#FFD700"; // Gold color untuk kode
+        ctx.fillStyle = "#FFD700";
         ctx.font = `${priceFontSize}px Arial, sans-serif`;
         ctx.fillText(
           codeText,
@@ -589,13 +776,11 @@ const ImageTaggingApp = () => {
           bgY + padding + labelFontSize + 4 * scale
         );
 
-        // Reset shadow
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
       });
 
-      // Download
       const link = document.createElement("a");
       link.download = "tagged-image.png";
       link.href = canvas.toDataURL();
@@ -610,10 +795,11 @@ const ImageTaggingApp = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Sparepart Motor Tagging App
+            Breakdown Drawings
           </h1>
           <p className="text-gray-600">
-            Upload gambar motor, tambahkan tag sparepart, dan download hasilnya
+            Start by uploading an image, tag the items you need, and save the
+            final tagged image.
           </p>
         </div>
 
@@ -665,13 +851,12 @@ const ImageTaggingApp = () => {
 
                   {/* Render tags */}
                   {tags.map((tag, index) => {
-                    // Hitung posisi tag berdasarkan persentase dari ukuran gambar saat ini
                     const currentDisplayX =
                       tag.percentageX * (imageRef.current?.clientWidth || 0);
                     const currentDisplayY =
                       tag.percentageY * (imageRef.current?.clientHeight || 0);
 
-                    // Hitung posisi popup berdasarkan posisi tag dan bounds
+                    // Position popup calculations (same as before)
                     let popupLeft = "20px";
                     let popupTop = "-20px";
                     let transform = "translateY(-50%)";
@@ -682,19 +867,15 @@ const ImageTaggingApp = () => {
                       const imageWidth = imageRect.width;
                       const imageHeight = imageRect.height;
 
-                      // Ukuran popup
-                      const popupWidth = 200;
-                      const popupHeight = 120;
+                      const popupWidth = 250;
+                      const popupHeight = 150;
 
-                      // Posisi absolut tag dalam container gambar
                       const tagAbsoluteX = imageRect.left + currentDisplayX;
                       const tagAbsoluteY = imageRect.top + currentDisplayY;
 
-                      // Ukuran viewport
                       const viewportWidth = window.innerWidth;
                       const viewportHeight = window.innerHeight;
 
-                      // Cek bounds untuk menentukan posisi popup
                       const wouldExceedRight =
                         tagAbsoluteX + 20 + popupWidth > viewportWidth;
                       const wouldExceedBottom =
@@ -703,26 +884,19 @@ const ImageTaggingApp = () => {
                       const wouldExceedLeft =
                         tagAbsoluteX - 20 - popupWidth < 0;
 
-                      // Logic positioning horizontal
                       if (wouldExceedRight && !wouldExceedLeft) {
-                        // Popup di kiri jika tidak cukup ruang di kanan
                         popupLeft = `-${popupWidth + 8}px`;
                       } else {
-                        // Default: popup di kanan
                         popupLeft = "20px";
                       }
 
-                      // Logic positioning vertical
                       if (wouldExceedBottom && !wouldExceedTop) {
-                        // Popup di atas jika tidak cukup ruang di bawah
                         popupTop = `-${popupHeight + 8}px`;
                         transform = "none";
                       } else if (wouldExceedTop && !wouldExceedBottom) {
-                        // Popup di bawah jika tidak cukup ruang di atas
                         popupTop = "32px";
                         transform = "none";
                       } else {
-                        // Default: popup di tengah vertikal
                         popupTop = "-20px";
                         transform = "translateY(-50%)";
                       }
@@ -745,13 +919,12 @@ const ImageTaggingApp = () => {
                               : "hover:scale-105"
                           }`}
                           style={{
-                            backgroundColor: tag.item.color,
+                            backgroundColor: tag.items[0]?.color || "#3B82F6",
                             cursor: draggedTag === tag.id ? "grabbing" : "grab",
                           }}
                           onMouseDown={(e) => handleMouseDown(e, tag.id, index)}
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Hanya buka popup jika tidak sedang drag
                             if (!draggedTag) {
                               setSelectedTagIndex(
                                 selectedTagIndex === index ? null : index
@@ -764,7 +937,7 @@ const ImageTaggingApp = () => {
 
                         {selectedTagIndex === index && (
                           <div
-                            className="absolute bg-white rounded-lg shadow-xl p-3 border z-10 min-w-48 max-w-52"
+                            className="absolute bg-white rounded-lg shadow-xl p-3 border z-10 min-w-60 max-w-72"
                             style={{
                               left: popupLeft,
                               top: popupTop,
@@ -773,7 +946,9 @@ const ImageTaggingApp = () => {
                           >
                             <div className="flex items-center justify-between mb-2">
                               <h4 className="font-semibold text-gray-800 text-sm">
-                                {tag.item.name}
+                                {tag.items.length > 1
+                                  ? `${tag.items.length} Items`
+                                  : tag.items[0]?.partName || "No items"}
                               </h4>
                               <button
                                 onClick={() => setSelectedTagIndex(null)}
@@ -782,16 +957,48 @@ const ImageTaggingApp = () => {
                                 <X size={16} />
                               </button>
                             </div>
-                            <p className="text-xs text-gray-600 mb-2">
-                              Kode: {tag.item.code}
-                            </p>
-                            <button
-                              onClick={() => removeTag(tag.id)}
-                              className="w-full bg-red-600 text-white py-1 px-3 rounded text-xs hover:bg-red-700 transition-colors flex items-center justify-center gap-1"
-                            >
-                              <X size={12} />
-                              Hapus Tag
-                            </button>
+
+                            {/* Show list of items in this tag */}
+                            <div className="max-h-32 overflow-y-auto mb-3">
+                              {tag.items.map((item, itemIndex) => (
+                                <div
+                                  key={`tag-item-${item.id}-${itemIndex}`} // Compound key untuk tag items
+                                  className="py-2 border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-medium text-gray-800 truncate">
+                                      {item.partName}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 ml-5">
+                                    Part No: {item.partNo}
+                                  </div>
+                                  <div className="text-xs text-gray-500 ml-5">
+                                    Honda: {item.hondaName}
+                                  </div>
+                                  <div className="text-xs text-gray-500 ml-5">
+                                    CMW: {item.cmwName}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => editTag(tag)}
+                                className="flex-1 bg-blue-600 text-white py-1 px-3 rounded text-xs hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
+                              >
+                                <Tag size={12} />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => removeTag(tag.id)}
+                                className="flex-1 bg-red-600 text-white py-1 px-3 rounded text-xs hover:bg-red-700 transition-colors flex items-center justify-center gap-1"
+                              >
+                                <X size={12} />
+                                Delete
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -824,7 +1031,7 @@ const ImageTaggingApp = () => {
                   >
                     {isDragOver
                       ? "Lepaskan file di sini"
-                      : "Klik untuk upload atau drag & drop gambar"}
+                      : "Click to upload or drag and drop an image"}
                   </p>
                   <p className="text-sm text-gray-400">
                     PNG, JPG, GIF hingga 10MB
@@ -837,73 +1044,209 @@ const ImageTaggingApp = () => {
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
                   <Tag className="inline w-4 h-4 mr-1" />
-                  Klik pada gambar untuk menambahkan tag sparepart motor
+                  Click on the image to add tags with multiple spare parts
                 </p>
               </div>
             )}
           </div>
 
-          {/* Cart Section - Moved below upload */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <ShoppingCart size={20} />
-              Daftar Sparepart ({cart.length})
+          {/* Cart Section with Full Table */}
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+              <ShoppingCart size={22} />
+              Selected Items{" "}
+              <span className="text-blue-600">({cart.length})</span>
             </h2>
 
             {cart.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                Belum ada sparepart yang dipilih
+              <p className="text-gray-500 text-center py-10">
+                No spare parts selected yet.
               </p>
             ) : (
-              <div className="space-y-3">
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      ></div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-800">
-                          {item.name}
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          Kode: {item.code}
-                        </p>
-                      </div>
+              <div className="space-y-5">
+                {/* Full Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-200 rounded-lg text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          No
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Part Name
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Part No
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Qty
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Honda
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          CMW
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Unit
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          EQ Supply
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Material
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Import
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Lokal
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Maker
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.map((item, itemIndex) => (
+                        <tr
+                          key={`cart-table-${item.id}-${itemIndex}`}
+                          className="hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {startIndex + itemIndex + 1}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-800 truncate">
+                                {item.partName}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.partNo}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600 font-medium">
+                            {item.quantity}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.hondaName}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.cmwName}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.unitName}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.eqSupplyName}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.materialName}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.importName}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.lokalName}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
+                            {item.makerName}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {cart.length > itemsPerPage && (
+                  <div className="flex items-center justify-between pt-5 border-t border-gray-200">
+                    <div className="text-sm text-gray-500">
+                      Showing {startIndex + 1}–{Math.min(endIndex, cart.length)}{" "}
+                      of {cart.length}
                     </div>
-                    <div className="text-right">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {item.quantity}x
-                      </span>
+
+                    <div className="flex items-center gap-2">
+                      {/* Prev */}
+                      <button
+                        onClick={goToPrevPage}
+                        disabled={currentPage === 1}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition ${
+                          currentPage === 1
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                        }`}
+                      >
+                        <ChevronLeft size={16} />
+                        Prev
+                      </button>
+
+                      {/* Page Numbers */}
+                      <div className="flex items-center gap-1">
+                        {Array.from(
+                          { length: totalPages },
+                          (_, i) => i + 1
+                        ).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`w-8 h-8 rounded-lg text-sm flex items-center justify-center transition ${
+                              currentPage === page
+                                ? "bg-blue-600 text-white"
+                                : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Next */}
+                      <button
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition ${
+                          currentPage === totalPages
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                        }`}
+                      >
+                        Next
+                        <ChevronRight size={16} />
+                      </button>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Dropdown for selecting items */}
+        {/* Multi-Item Selection Dropdown */}
         {showDropdown && (
           <div
-            className="fixed bg-white rounded-lg shadow-xl border z-50 max-h-80 overflow-hidden"
+            className="fixed bg-white rounded-lg shadow-xl border z-50 flex flex-col"
             style={{
               left: `${dropdownPosition.x}px`,
               top: `${dropdownPosition.y}px`,
-              minWidth: "280px",
+              width: "400px",
+              height: "520px",
             }}
           >
-            <div className="p-3">
-              <h3 className="font-semibold text-gray-800 mb-3 px-1">
-                Pilih Sparepart Motor:
-              </h3>
+            {/* Header - Fixed */}
+            <div className="flex-shrink-0 p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-800 text-sm">
+                  {editingTag ? "Edit Tag Items" : "Select Multiple Items"}
+                </h3>
+                <div className="text-sm text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded">
+                  {selectedItems.length} selected
+                </div>
+              </div>
 
               {/* Search Input */}
-              <div className="relative mb-3">
+              <div className="relative">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                   size={16}
@@ -911,51 +1254,128 @@ const ImageTaggingApp = () => {
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Cari sparepart..."
+                  placeholder="Search parts, honda, cmw..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
               </div>
-
-              {/* Items List */}
-              <div className="max-h-48 overflow-y-auto">
-                {filteredItems.length === 0 ? (
-                  <div className="text-center py-4 text-gray-500 text-sm">
-                    Sparepart tidak ditemukan
-                  </div>
-                ) : (
-                  filteredItems.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleItemSelect(item)}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded flex items-center gap-3 transition-colors"
-                    >
-                      <div
-                        className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      ></div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-gray-800 truncate">
-                          {item.name}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          Kode: {item.code}
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
             </div>
 
-            <div className="border-t p-2">
-              <button
-                onClick={() => setShowDropdown(false)}
-                className="w-full px-3 py-2 text-gray-500 hover:bg-gray-100 rounded text-sm transition-colors"
-              >
-                Tutup
-              </button>
+            {/* Selected Items Preview - Fixed Height */}
+            {selectedItems.length > 0 && (
+              <div className="flex-shrink-0 p-3 bg-blue-50 border-b border-gray-200">
+                <div className="text-xs text-blue-700 font-medium mb-2">
+                  Selected Items ({selectedItems.length}):
+                </div>
+                <div className="overflow-y-auto" style={{ maxHeight: "80px" }}>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedItems.map((item, itemIndex) => (
+                      <span
+                        key={`selected-${item.id}-${itemIndex}`} // Compound key untuk selected items
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs flex-shrink-0"
+                        style={{ maxWidth: "160px" }}
+                      >
+                        <span className="truncate">{item.partName}</span>
+                        <button
+                          onClick={() => toggleItemSelection(item)}
+                          className="hover:text-blue-600 flex-shrink-0"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Items List - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-3">
+              {filteredItems.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  No spare parts found
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {filteredItems.map((item, itemIndex) => {
+                    const isSelected = selectedItems.find(
+                      (selected) => selected.id === item.id
+                    );
+                    return (
+                      <button
+                        key={`item-${item.id}-${itemIndex}`} // Compound key untuk memastikan uniqueness
+                        onClick={() => toggleItemSelection(item)}
+                        className={`w-full text-left px-3 py-3 rounded-lg flex items-start gap-3 transition-colors ${
+                          isSelected
+                            ? "bg-blue-100 hover:bg-blue-200 border border-blue-200"
+                            : "hover:bg-gray-50 border border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm text-gray-800 truncate mb-1">
+                              {item.partName}
+                            </div>
+                            <div className="text-xs text-gray-600 space-y-0.5">
+                              <div className="truncate">
+                                Part No: {item.partNo}
+                              </div>
+                              <div className="truncate">
+                                Honda: {item.hondaName}
+                              </div>
+                              <div className="truncate">
+                                CMW: {item.cmwName}
+                              </div>
+                              <div className="truncate">
+                                Qty: {item.quantity}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 mt-0.5">
+                          {isSelected ? (
+                            <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center">
+                              <Check size={12} className="text-white" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 border-2 border-gray-300 rounded"></div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons - Fixed at Bottom */}
+            <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedItems([]);
+                    setEditingTag(null);
+                    setShowDropdown(false);
+                  }}
+                  className="flex-1 px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={editingTag ? updateTag : createTagWithSelectedItems}
+                  disabled={selectedItems.length === 0}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selectedItems.length === 0
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+                  }`}
+                >
+                  {editingTag
+                    ? `Update Tag (${selectedItems.length})`
+                    : `Create Tag (${selectedItems.length})`}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -964,7 +1384,11 @@ const ImageTaggingApp = () => {
         {showDropdown && (
           <div
             className="fixed inset-0 z-40"
-            onClick={() => setShowDropdown(false)}
+            onClick={() => {
+              setSelectedItems([]);
+              setEditingTag(null);
+              setShowDropdown(false);
+            }}
           ></div>
         )}
       </div>
