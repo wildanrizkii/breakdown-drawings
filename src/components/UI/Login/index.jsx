@@ -76,7 +76,7 @@ const Login = () => {
       const response = await signIn("credentials", {
         email: email,
         password: password,
-        maxAge: maxAge.toString(), // Kirim maxAge sebagai string
+        maxAge: maxAge.toString(),
         redirect: false,
         callbackUrl: "/",
       });
@@ -117,7 +117,7 @@ const Login = () => {
         // Success - handle remember me
         handleRememberMe(email, rememberMe);
 
-        toast.success("Login successful! Redirecting to dashboard...");
+        toast.success("Login successful!");
 
         // Clear password but keep email if remembering
         setPassword("");
@@ -185,64 +185,58 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex">
-      {/* Header with Logo */}
-      <div className="absolute top-6 right-6 z-10">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">BD</span>
+    <div className="min-h-screen bg-white flex">
+      {/* Logo - Top Left */}
+      <div className="absolute top-8 left-8 z-10">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center">
+            <span className="text-white font-bold text-base">BD</span>
           </div>
-          <span className="text-gray-900 font-semibold text-lg">
+          <span className="text-slate-900 font-semibold text-xl">
             Breakdown Drawings
           </span>
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
-      <div className="w-full flex items-center justify-center px-6 py-12">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome back!
-            </h2>
-            <p className="text-gray-600">
-              Build your inventory management effortlessly with our
-              <br />
-              powerful spare parts system.
+      {/* Main Content */}
+      <div className="w-full flex items-center justify-center px-8">
+        <div className="w-full max-w-sm">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-3xl font-semibold text-slate-900 mb-3">
+              Sign in
+            </h1>
+            <p className="text-slate-500 text-base leading-relaxed">
+              Welcome back to your inventory management system
             </p>
           </div>
 
+          {/* Form */}
           <div className="space-y-6">
             {/* Email Field */}
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Email
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                Email address
               </label>
-              <div className="relative">
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={handleEmailChange}
-                  onKeyPress={handleKeyPress}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors ${
-                    error ? "border-red-300 bg-red-50" : "border-gray-300"
-                  }`}
-                  placeholder="drawings@gmail.com"
-                  required
-                />
-              </div>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={handleEmailChange}
+                onKeyPress={handleKeyPress}
+                className={`w-full h-12 px-4 border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all duration-200 ${
+                  error
+                    ? "border-red-300 focus:ring-red-500"
+                    : "border-slate-200 hover:border-slate-300"
+                }`}
+                placeholder="Enter your email"
+                required
+              />
             </div>
 
             {/* Password Field */}
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label className="block text-sm font-medium text-slate-700 mb-3">
                 Password
               </label>
               <div className="relative">
@@ -252,16 +246,19 @@ const Login = () => {
                   value={password}
                   onChange={handlePasswordChange}
                   onKeyPress={handleKeyPress}
-                  className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors ${
-                    error ? "border-red-300 bg-red-50" : "border-gray-300"
+                  className={`w-full h-12 px-4 pr-12 border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all duration-200 ${
+                    error
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-slate-200 hover:border-slate-300"
                   }`}
-                  placeholder="••••••••••"
+                  placeholder="Enter your password"
                   required
                 />
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                  tabIndex={-1}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200 focus:outline-none"
                 >
                   {showPassword ? (
                     <MdVisibility className="h-5 w-5" />
@@ -272,64 +269,65 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Remember Me Toggle */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="text-gray-600 text-sm">
-                  Remember sign in details
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleRememberToggle}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                  rememberMe ? "bg-purple-600" : "bg-gray-200"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    rememberMe ? "translate-x-6" : "translate-x-1"
-                  }`}
+            {/* Remember Me */}
+            <div className="flex items-center justify-between py-2">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={handleRememberToggle}
+                  className="sr-only"
                 />
-              </button>
+                <div
+                  className={`relative w-5 h-5 rounded border-2 transition-all duration-200 ${
+                    rememberMe
+                      ? "bg-slate-900 border-slate-900"
+                      : "border-slate-300 hover:border-slate-400"
+                  }`}
+                >
+                  {rememberMe && (
+                    <svg
+                      className="absolute inset-0 w-3 h-3 text-white m-auto"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <span className="ml-2 text-sm text-slate-600">Remember me</span>
+              </label>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start space-x-2">
-                <svg
-                  className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <p className="text-red-600 text-sm font-medium">{error}</p>
+              <div className="p-4 bg-red-50 border border-red-100 rounded-xl">
+                <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
-            {/* Login Button */}
+            {/* Submit Button */}
             <button
               type="button"
               onClick={handleSubmit}
               disabled={isLoading}
-              className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
+              className={`w-full h-12 rounded-xl font-medium text-white transition-all duration-200 ${
                 isLoading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transform hover:scale-[1.02]"
+                  ? "bg-slate-900 cursor-not-allowed"
+                  : "bg-slate-900 transform hover:scale-[1.01] active:scale-[0.99]"
               }`}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Logging in...
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Signing in...
                 </div>
               ) : (
-                "Log in"
+                "Sign in"
               )}
             </button>
           </div>

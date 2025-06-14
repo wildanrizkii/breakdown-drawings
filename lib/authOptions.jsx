@@ -47,7 +47,7 @@ export const authOptions = {
         }
 
         return {
-          id: user.id,
+          id: user.id_user,
           name: user.nama,
           email: user.email,
           username: user.username,
@@ -93,21 +93,23 @@ export const authOptions = {
     signIn: "/login",
   },
 
-  events: {
-    async signIn({ user, account, profile }) {
-      console.log("User signed in:", {
-        id: user.id,
-        email: user.email,
-        provider: account.provider,
-      });
-    },
-    async signOut({ session, token }) {
-      console.log("User signed out:", {
-        id: token?.id,
-        email: token?.email,
-      });
-    },
-  },
+  // Debugging
+
+  // events: {
+  //   async signIn({ user, account, profile }) {
+  //     console.log("User signed in:", {
+  //       id: user.id,
+  //       email: user.email,
+  //       provider: account.provider,
+  //     });
+  //   },
+  //   async signOut({ session, token }) {
+  //     console.log("User signed out:", {
+  //       id: token?.id,
+  //       email: token?.email,
+  //     });
+  //   },
+  // },
 
   secret: process.env.NEXTAUTH_SECRET,
 };

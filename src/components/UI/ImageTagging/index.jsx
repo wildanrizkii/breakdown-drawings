@@ -791,7 +791,7 @@ const ImageTaggingApp = () => {
   }, [uploadedImage, tags]);
 
   return (
-    <div className="h-fit p-6">
+    <div className="h-fit">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -805,7 +805,7 @@ const ImageTaggingApp = () => {
 
         <div className="space-y-6">
           {/* Upload Section */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-800">
                 Upload & Tag Image
@@ -1051,7 +1051,7 @@ const ImageTaggingApp = () => {
           </div>
 
           {/* Cart Section with Full Table */}
-          <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
               <ShoppingCart size={22} />
               Selected Items{" "}
