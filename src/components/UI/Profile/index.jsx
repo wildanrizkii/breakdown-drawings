@@ -232,7 +232,7 @@ const Profile = () => {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
+    <div className="max-w-2xl mx-auto py-8">
       <div className="bg-white rounded-lg shadow-sm border border-gray-100">
         {/* Header */}
         <div className="px-8 py-6 border-b border-gray-100">
