@@ -1154,7 +1154,7 @@ const ImageTaggingApp = () => {
       // Create download link
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `supplier-maker-layout-${
+      link.download = `export-breakdown-drawings-${
         new Date().toISOString().split("T")[0]
       }.xlsx`;
       link.click();

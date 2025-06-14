@@ -143,7 +143,7 @@ const About = () => {
         </div>
 
         {/* Quote Section */}
-        <div className="text-center py-12 border-t border-gray-100">
+        <div className="text-center pt-10 border-t border-gray-100">
           <blockquote className="text-lg text-gray-500 font-light italic max-w-md mx-auto">
             "Simplicity is the ultimate sophistication in software design."
           </blockquote>
