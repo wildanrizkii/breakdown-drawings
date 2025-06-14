@@ -3,7 +3,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Upload,
   Download,
-  ShoppingCart,
+  List,
   X,
   Tag,
   Plus,
@@ -12,8 +12,10 @@ import {
   ChevronRight,
   Check,
   Minus,
+  FileSpreadsheet,
 } from "lucide-react";
 import supabase from "@/app/utils/db";
+import * as ExcelJS from "exceljs";
 
 const ImageTaggingApp = () => {
   const [uploadedImage, setUploadedImage] = useState(null);
@@ -38,6 +40,42 @@ const ImageTaggingApp = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  // Export form states
+  const [showExportForm, setShowExportForm] = useState(false);
+  const [exportFormData, setExportFormData] = useState({
+    partNo: "",
+    partName: "",
+    customer: "",
+    project: "",
+    revisionDate:
+      "00/" +
+      new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    approvers: {
+      dibuat: "",
+      diperiksa1: "",
+      diperiksa2: "",
+      disetujui: "",
+    },
+    revisions: [
+      { rev: "", description: "", date: "" },
+      { rev: "", description: "", date: "" },
+      { rev: "", description: "", date: "" },
+      {
+        rev: "△",
+        description: "New Release",
+        date: new Date().toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+      },
+    ],
+  });
 
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
@@ -141,6 +179,24 @@ const ImageTaggingApp = () => {
       console.error("Error fetching main_part data: ", error);
       alert("Error fetching main_part data: " + error.message);
     }
+  };
+
+  // Function to recalculate cart based on all tags
+  const recalculateCart = (updatedTags) => {
+    const uniqueItems = new Map();
+
+    // Collect unique items from all tags
+    updatedTags.forEach((tag) => {
+      tag.items.forEach((item) => {
+        if (!uniqueItems.has(item.id)) {
+          uniqueItems.set(item.id, item);
+        }
+      });
+    });
+
+    // Update cart with original quantities from item data
+    const newCart = Array.from(uniqueItems.values());
+    setCart(newCart);
   };
 
   useEffect(() => {
@@ -407,23 +463,11 @@ const ImageTaggingApp = () => {
       items: [...selectedItems], // Array of items instead of single item
     };
 
-    setTags((prev) => [...prev, newTag]);
+    const updatedTags = [...tags, newTag];
+    setTags(updatedTags);
 
-    // Add all selected items to cart
-    selectedItems.forEach((item) => {
-      const existingItem = cart.find((cartItem) => cartItem.id === item.id);
-      if (existingItem) {
-        setCart((prev) =>
-          prev.map((cartItem) =>
-            cartItem.id === item.id
-              ? { ...cartItem, quantity: cartItem.quantity + 1 }
-              : cartItem
-          )
-        );
-      } else {
-        setCart((prev) => [...prev, { ...item, quantity: 1 }]);
-      }
-    });
+    // Recalculate cart with new tags
+    recalculateCart(updatedTags);
 
     setSelectedItems([]);
     setShowDropdown(false);
@@ -447,52 +491,15 @@ const ImageTaggingApp = () => {
   const updateTag = () => {
     if (selectedItems.length === 0 || !editingTag) return;
 
-    const oldTag = tags.find((tag) => tag.id === editingTag);
-
-    // Remove old items from cart
-    if (oldTag) {
-      oldTag.items.forEach((item) => {
-        const existingItem = cart.find((cartItem) => cartItem.id === item.id);
-        if (existingItem) {
-          if (existingItem.quantity > 1) {
-            setCart((prev) =>
-              prev.map((cartItem) =>
-                cartItem.id === item.id
-                  ? { ...cartItem, quantity: cartItem.quantity - 1 }
-                  : cartItem
-              )
-            );
-          } else {
-            setCart((prev) =>
-              prev.filter((cartItem) => cartItem.id !== item.id)
-            );
-          }
-        }
-      });
-    }
-
     // Update tag with new items
-    setTags((prev) =>
-      prev.map((tag) =>
-        tag.id === editingTag ? { ...tag, items: [...selectedItems] } : tag
-      )
+    const updatedTags = tags.map((tag) =>
+      tag.id === editingTag ? { ...tag, items: [...selectedItems] } : tag
     );
 
-    // Add new items to cart
-    selectedItems.forEach((item) => {
-      const existingItem = cart.find((cartItem) => cartItem.id === item.id);
-      if (existingItem) {
-        setCart((prev) =>
-          prev.map((cartItem) =>
-            cartItem.id === item.id
-              ? { ...cartItem, quantity: cartItem.quantity + 1 }
-              : cartItem
-          )
-        );
-      } else {
-        setCart((prev) => [...prev, { ...item, quantity: 1 }]);
-      }
-    });
+    setTags(updatedTags);
+
+    // Recalculate cart with updated tags
+    recalculateCart(updatedTags);
 
     setSelectedItems([]);
     setEditingTag(null);
@@ -500,31 +507,11 @@ const ImageTaggingApp = () => {
   };
 
   const removeTag = (tagId) => {
-    const tagToRemove = tags.find((tag) => tag.id === tagId);
+    const updatedTags = tags.filter((tag) => tag.id !== tagId);
+    setTags(updatedTags);
 
-    if (tagToRemove) {
-      // Remove all items from this tag from cart
-      tagToRemove.items.forEach((item) => {
-        const existingItem = cart.find((cartItem) => cartItem.id === item.id);
-        if (existingItem) {
-          if (existingItem.quantity > 1) {
-            setCart((prev) =>
-              prev.map((cartItem) =>
-                cartItem.id === item.id
-                  ? { ...cartItem, quantity: cartItem.quantity - 1 }
-                  : cartItem
-              )
-            );
-          } else {
-            setCart((prev) =>
-              prev.filter((cartItem) => cartItem.id !== item.id)
-            );
-          }
-        }
-      });
-    }
-
-    setTags((prev) => prev.filter((tag) => tag.id !== tagId));
+    // Recalculate cart after removing tag
+    recalculateCart(updatedTags);
   };
 
   const removeFromCart = (itemId) => {
@@ -657,7 +644,7 @@ const ImageTaggingApp = () => {
 
         const codeText =
           tag.items.length > 1
-            ? `${tag.items.length} items selected`
+            ? `Part No: ${tag.items.map((item) => item.partNo).join(", ")}`
             : `Part No: ${tag.items[0].partNo}`;
 
         // Measure text
@@ -790,6 +777,399 @@ const ImageTaggingApp = () => {
     img.src = uploadedImage;
   }, [uploadedImage, tags]);
 
+  // Handle export form input changes
+  const handleExportFormChange = (field, value) => {
+    if (field.includes(".")) {
+      const [parent, child] = field.split(".");
+      setExportFormData((prev) => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value,
+        },
+      }));
+    } else {
+      setExportFormData((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    }
+  };
+
+  // Handle revision data changes
+  const handleRevisionChange = (index, field, value) => {
+    setExportFormData((prev) => ({
+      ...prev,
+      revisions: prev.revisions.map((revision, i) =>
+        i === index ? { ...revision, [field]: value } : revision
+      ),
+    }));
+  };
+
+  // Show export form
+  const showExportFormModal = () => {
+    if (cart.length === 0) {
+      alert("No items to export");
+      return;
+    }
+    setShowExportForm(true);
+  };
+
+  const exportToExcel = useCallback(async () => {
+    try {
+      // Create a new workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Supplier Maker Layout");
+
+      // Set column widths
+      worksheet.columns = [
+        { key: "no", width: 5 }, // A - NO
+        { key: "partNoInduk", width: 15 }, // B - PART NO INDUK
+        { key: "partNoAnak", width: 15 }, // C - PART NO ANAK
+        { key: "partNoChw", width: 15 }, // D - PART NO CHW
+        { key: "partName", width: 25 }, // E - PART NAME
+        { key: "quantity", width: 8 }, // F - QTY
+        { key: "unit", width: 8 }, // G - Unit
+        { key: "supplier", width: 12 }, // H - SUPPLIER
+        { key: "material", width: 12 }, // I - MATERIAL
+        { key: "impor", width: 12 }, // J - IMPOR
+        { key: "lokal", width: 12 }, // K - LOKAL
+        { key: "partNo", width: 15 }, // L - PART NO
+        { key: "maker", width: 15 }, // M - MAKER
+        { key: "remark", width: 20 }, // N - REMARK
+      ];
+
+      // Company Header
+      const companyRow = worksheet.getRow(1);
+      companyRow.getCell(1).value = "PT. CIPTA MANDIRI WIRASAKTI";
+      companyRow.getCell(1).font = { bold: true, size: 6 };
+      worksheet.mergeCells("A1:N1");
+
+      // Title
+      const titleRow = worksheet.getRow(2);
+      titleRow.getCell(1).value = "SUPPLIER / MAKER LAY OUT";
+      titleRow.getCell(1).font = { bold: true, size: 14 };
+      titleRow.getCell(1).alignment = { horizontal: "center" };
+      worksheet.mergeCells("A2:N2");
+
+      // Project Information Section - using form data
+      const projectInfo = [
+        ["PART NO.", exportFormData.partNo],
+        ["PART NAME", exportFormData.partName],
+        ["CUSTOMER", exportFormData.customer],
+        ["PROJECT", exportFormData.project],
+        ["REVISI / DATE", exportFormData.revisionDate],
+      ];
+
+      projectInfo.forEach((info, index) => {
+        const row = 3 + index;
+        // Merge kolom A dan B
+        worksheet.mergeCells(`A${row}:B${row}`);
+        worksheet.getCell(`A${row}`).value = info[0];
+        worksheet.getCell(`A${row}`).font = { bold: true };
+        worksheet.getCell(`A${row}`).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "E5E7EB" },
+        };
+        worksheet.getCell(`A${row}`).alignment = {
+          vertical: "middle",
+          horizontal: "left",
+        };
+
+        // Merge kolom C sampai E untuk value info[1]
+        worksheet.mergeCells(`C${row}:E${row}`);
+        worksheet.getCell(`C${row}`).value = info[1];
+        worksheet.getCell(`C${row}`).alignment = {
+          vertical: "middle",
+          horizontal: "left",
+        };
+
+        // Add borders ke kolom A-E
+        ["A", "B", "C", "D", "E"].forEach((col) => {
+          worksheet.getCell(`${col}${row}`).border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+      });
+
+      // Revision table (top right)
+      const revisionHeaders = ["REV", "DESCRIPTION", "DATE"];
+      const revRow = 3;
+
+      // Header row
+      revisionHeaders.forEach((header, index) => {
+        const col = index === 0 ? "K" : index === 1 ? "L" : "N";
+        worksheet.getCell(`${col}${revRow}`).value = header;
+        worksheet.getCell(`${col}${revRow}`).font = { bold: true };
+        worksheet.getCell(`${col}${revRow}`).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "E5E7EB" },
+        };
+        worksheet.getCell(`${col}${revRow}`).alignment = {
+          horizontal: "center",
+          vertical: "middle",
+        };
+        worksheet.getCell(`${col}${revRow}`).border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+
+      // Merge DESCRIPTION header L3:M3
+      worksheet.mergeCells(`L${revRow}:M${revRow}`);
+
+      // Add revision rows
+      for (let i = 1; i <= 4; i++) {
+        const row = revRow + i;
+        const revisionData = exportFormData.revisions[i - 1];
+
+        // REV cell (K)
+        const revCell = worksheet.getCell(`K${row}`);
+        revCell.value = revisionData.rev || "";
+        revCell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        revCell.alignment = { horizontal: "center", vertical: "middle" };
+
+        // DESCRIPTION cells (L:M) merged
+        worksheet.mergeCells(`L${row}:M${row}`);
+        const descCell = worksheet.getCell(`L${row}`);
+        descCell.value = revisionData.description || "";
+        descCell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        descCell.alignment = { horizontal: "left", vertical: "middle" };
+
+        // DATE cell (N)
+        const dateCell = worksheet.getCell(`N${row}`);
+        dateCell.value = revisionData.date || "";
+        dateCell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        dateCell.alignment = { horizontal: "center", vertical: "middle" };
+      }
+
+      // Main table header - Row 1
+      const tableStartRow = 9;
+
+      // Header Row 1 (Row 9)
+      const headerRow1 = worksheet.getRow(tableStartRow);
+      headerRow1.values = [
+        "NO",
+        "PART NO CUST",
+        "",
+        "PART NO CMW",
+        "PART NAME",
+        "QTY",
+        "UNIT",
+        "DWG CUSTOMER",
+        "",
+        "SUPPLIER",
+        "",
+        "",
+        "",
+        "REMARK",
+      ];
+
+      // Header Row 2 (Row 10)
+      const headerRow2 = worksheet.getRow(tableStartRow + 1);
+      headerRow2.values = [
+        "",
+        "PART NO INDUK",
+        "PART NO ANAK",
+        "",
+        "",
+        "",
+        "",
+        "SUPPLIER",
+        "MATERIAL",
+        "IMPOR",
+        "LOKAL",
+        "PART NO",
+        "MAKER",
+        "",
+      ];
+
+      // Merge header sesuai format
+      worksheet.mergeCells(`A${tableStartRow}:A${tableStartRow + 1}`);
+      worksheet.mergeCells(`B${tableStartRow}:C${tableStartRow}`);
+      worksheet.mergeCells(`D${tableStartRow}:D${tableStartRow + 1}`);
+      worksheet.mergeCells(`E${tableStartRow}:E${tableStartRow + 1}`);
+      worksheet.mergeCells(`F${tableStartRow}:F${tableStartRow + 1}`);
+      worksheet.mergeCells(`G${tableStartRow}:G${tableStartRow + 1}`);
+      worksheet.mergeCells(`H${tableStartRow}:I${tableStartRow}`);
+      worksheet.mergeCells(`J${tableStartRow}:M${tableStartRow}`);
+      worksheet.mergeCells(`N${tableStartRow}:N${tableStartRow + 1}`);
+
+      // Style baris 9–10: fill biru
+      for (let rowNum = tableStartRow; rowNum <= tableStartRow + 1; rowNum++) {
+        for (let colAscii = 65; colAscii <= 78; colAscii++) {
+          const col = String.fromCharCode(colAscii);
+          const cell = worksheet.getCell(`${col}${rowNum}`);
+          cell.font = { bold: true, color: { argb: "FF000000" } }; // hitam
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        }
+      }
+
+      // Set tinggi baris 9–10
+      [headerRow1, headerRow2].forEach((row) => {
+        row.height = 25;
+      });
+
+      // Add data rows
+      const dataStartRow = tableStartRow + 2;
+      cart.forEach((item, index) => {
+        const row = worksheet.addRow({
+          no: index + 1,
+          partNoInduk: item.partNoInduk || item.partNo || "",
+          partNoAnak: item.partNoAnak || "",
+          partNoChw: item.partNo || "",
+          partName: item.partName,
+          quantity: item.quantity,
+          unit: item.unitName || "PCS",
+          supplier: item.supplier || "",
+          material: item.materialName || "",
+          impor: item.importName || "",
+          lokal: item.lokalName || "",
+          partNo: item.partNo || "",
+          maker: item.makerName || "",
+          remark: item.remark || "",
+        });
+
+        // Style data rows
+        row.alignment = { horizontal: "left", vertical: "middle" };
+        row.height = 20;
+      });
+
+      // Add borders to all table cells
+      const tableEndRow = dataStartRow + cart.length - 1;
+      for (let row = tableStartRow; row <= tableEndRow; row++) {
+        for (let col = 1; col <= 14; col++) {
+          const cell = worksheet.getCell(row, col);
+          cell.border = {
+            top: { style: "thin", color: { argb: "000000" } },
+            left: { style: "thin", color: { argb: "000000" } },
+            bottom: { style: "thin", color: { argb: "000000" } },
+            right: { style: "thin", color: { argb: "000000" } },
+          };
+        }
+      }
+
+      // Approval section at bottom - using form data
+      const approvalStartRow = tableEndRow + 4;
+      const approvalHeaders = ["Dibuat", "Diperiksa", "Disetujui"];
+      const approvalNames = [
+        exportFormData.approvers.dibuat,
+        exportFormData.approvers.diperiksa1,
+        exportFormData.approvers.diperiksa2,
+        exportFormData.approvers.disetujui,
+      ];
+      const approvalCols = ["K", "L", "M", "N"];
+
+      // Merge kolom L dan M hanya di baris header
+      worksheet.mergeCells(`L${approvalStartRow}:M${approvalStartRow}`);
+
+      // Row 1 - Headers (Dibuat, Diperiksa, Disetujui)
+      approvalHeaders.forEach((header, index) => {
+        // Kolom header: 0 = K, 1 = L, 2 = N
+        let col = approvalCols[index === 2 ? 3 : index];
+        worksheet.getCell(`${col}${approvalStartRow}`).value = header;
+        worksheet.getCell(`${col}${approvalStartRow}`).font = { bold: true };
+        worksheet.getCell(`${col}${approvalStartRow}`).alignment = {
+          horizontal: "center",
+          vertical: "middle",
+        };
+        worksheet.getCell(`${col}${approvalStartRow}`).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "E5E7EB" },
+        };
+        worksheet.getCell(`${col}${approvalStartRow}`).border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+
+      // Baris 2 - Signature area (4 kolom: K, L, M, N)
+      approvalCols.forEach((col) => {
+        const cell = worksheet.getCell(`${col}${approvalStartRow + 1}`);
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+      worksheet.getRow(approvalStartRow + 1).height = 40;
+
+      // Baris 3 - Names (4 kolom: K, L, M, N) - using form data
+      approvalNames.forEach((name, index) => {
+        const col = approvalCols[index];
+        worksheet.getCell(`${col}${approvalStartRow + 2}`).value = name;
+        worksheet.getCell(`${col}${approvalStartRow + 2}`).alignment = {
+          horizontal: "center",
+          vertical: "middle",
+        };
+        worksheet.getCell(`${col}${approvalStartRow + 2}`).font = {
+          bold: true,
+        };
+        worksheet.getCell(`${col}${approvalStartRow + 2}`).border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+
+      // Generate Excel file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      // Create download link
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `supplier-maker-layout-${
+        new Date().toISOString().split("T")[0]
+      }.xlsx`;
+      link.click();
+
+      // Clean up
+      URL.revokeObjectURL(link.href);
+
+      // Close the form
+      setShowExportForm(false);
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      alert("Error exporting to Excel: " + error.message);
+    }
+  }, [cart, exportFormData]);
+
   return (
     <div className="h-fit">
       <div className="max-w-7xl mx-auto">
@@ -825,6 +1205,15 @@ const ImageTaggingApp = () => {
                   >
                     <Download size={16} />
                     Download
+                  </button>
+                )}
+                {cart.length > 0 && (
+                  <button
+                    onClick={showExportFormModal}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  >
+                    <FileSpreadsheet size={16} />
+                    Export Excel
                   </button>
                 )}
               </div>
@@ -1053,7 +1442,7 @@ const ImageTaggingApp = () => {
           {/* Cart Section with Full Table */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
-              <ShoppingCart size={22} />
+              <List size={22} />
               Selected Items{" "}
               <span className="text-blue-600">({cart.length})</span>
             </h2>
@@ -1222,6 +1611,318 @@ const ImageTaggingApp = () => {
             )}
           </div>
         </div>
+
+        {/* Export Form Modal */}
+        {showExportForm && (
+          <div
+            className="fixed inset-0 flex items-center justify-center z-50"
+            style={{ backgroundColor: "rgba(75, 85, 99, 0.4)" }}
+          >
+            <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Export to Excel - Document Information
+                  </h3>
+                  <button
+                    onClick={() => setShowExportForm(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Project Information Section */}
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-700 mb-4">
+                      Project Information
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Part No <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.partNo}
+                          onChange={(e) =>
+                            handleExportFormChange("partNo", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter part number"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Part Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.partName}
+                          onChange={(e) =>
+                            handleExportFormChange("partName", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter part name"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Customer <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.customer}
+                          onChange={(e) =>
+                            handleExportFormChange("customer", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter customer name"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Project <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.project}
+                          onChange={(e) =>
+                            handleExportFormChange("project", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter project name"
+                          required
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Revision Date
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.revisionDate}
+                          onChange={(e) =>
+                            handleExportFormChange(
+                              "revisionDate",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Revision Date"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Revision Section */}
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-700 mb-4">
+                      Revision History
+                    </h4>
+                    <div className="space-y-3">
+                      {exportFormData.revisions.map((revision, index) => (
+                        <div
+                          key={index}
+                          className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Rev {index + 1}
+                            </label>
+                            <input
+                              type="text"
+                              value={revision.rev}
+                              onChange={(e) =>
+                                handleRevisionChange(
+                                  index,
+                                  "rev",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Rev"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Description
+                            </label>
+                            <input
+                              type="text"
+                              value={revision.description}
+                              onChange={(e) =>
+                                handleRevisionChange(
+                                  index,
+                                  "description",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Description"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Date
+                            </label>
+                            <input
+                              type="text"
+                              value={revision.date}
+                              onChange={(e) =>
+                                handleRevisionChange(
+                                  index,
+                                  "date",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Date"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      <div className="text-xs text-gray-500 mt-2">
+                        <span className="font-medium">Note:</span> Last revision
+                        (Rev 4) is typically used for "New Release" with current
+                        date.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Approval Section */}
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-700 mb-4">
+                      Approval Names
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Dibuat (Created by)
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.approvers.dibuat}
+                          onChange={(e) =>
+                            handleExportFormChange(
+                              "approvers.dibuat",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter name"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Diperiksa 1 (Checked by 1)
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.approvers.diperiksa1}
+                          onChange={(e) =>
+                            handleExportFormChange(
+                              "approvers.diperiksa1",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter name"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Diperiksa 2 (Checked by 2)
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.approvers.diperiksa2}
+                          onChange={(e) =>
+                            handleExportFormChange(
+                              "approvers.diperiksa2",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter name"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Disetujui (Approved by)
+                        </label>
+                        <input
+                          type="text"
+                          value={exportFormData.approvers.disetujui}
+                          onChange={(e) =>
+                            handleExportFormChange(
+                              "approvers.disetujui",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter name"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Export Summary
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      This will export {cart.length} items to Excel with the
+                      information provided above.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 mt-8 pt-6 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowExportForm(false)}
+                    className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={exportToExcel}
+                    disabled={
+                      !exportFormData.partNo ||
+                      !exportFormData.partName ||
+                      !exportFormData.customer ||
+                      !exportFormData.project
+                    }
+                    className={`flex-1 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                      !exportFormData.partNo ||
+                      !exportFormData.partName ||
+                      !exportFormData.customer ||
+                      !exportFormData.project
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-emerald-600 text-white hover:bg-emerald-700"
+                    }`}
+                  >
+                    <FileSpreadsheet size={16} />
+                    Export to Excel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Multi-Item Selection Dropdown */}
         {showDropdown && (
