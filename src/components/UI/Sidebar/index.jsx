@@ -83,7 +83,7 @@ const NAVIGATION_ITEMS = [
   },
   {
     name: "Settings",
-    href: "/settinsg",
+    href: "/settings",
     subpaths: ["/settings/users"],
     icon: <IoSettingsOutline size={22} />,
     roles: ["Admin"],

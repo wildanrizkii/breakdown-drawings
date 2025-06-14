@@ -5,7 +5,8 @@ import supabase from "@/app/utils/db";
 export const authOptions = {
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 5, // Session berumur 5 jam karena 60 * 60 detik * 5 = 5 jam
+    // Durasi default session (1 hari jika tidak ada remember me)
+    maxAge: 24 * 60 * 60, // 24 jam dalam detik
   },
   providers: [
     CredentialsProvider({
@@ -13,50 +14,100 @@ export const authOptions = {
       credentials: {
         email: {},
         password: {},
+        maxAge: {},
       },
       async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
         const { data, error } = await supabase
           .from("users")
           .select("*")
-          .eq("email", credentials?.email);
-        const user = data[0];
+          .eq("email", credentials.email);
 
-        const passwordCorrect = await bcrypt.compare(
-          credentials?.password,
-          user?.password
-        );
-
-        if (passwordCorrect) {
-          return {
-            id: user?.id,
-            name: user?.nama,
-            email: user?.email,
-            username: user?.username,
-          };
+        if (error) {
+          console.error("Database error:", error);
+          return null;
         }
 
-        // console.log("credentials", credentials);
-        return null;
+        const user = data?.[0];
+
+        if (!user) {
+          return null;
+        }
+
+        const passwordCorrect = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+
+        if (!passwordCorrect) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          name: user.nama,
+          email: user.email,
+          username: user.username,
+          maxAge: credentials.maxAge
+            ? parseInt(credentials.maxAge)
+            : 24 * 60 * 60,
+        };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, account }) {
-      // Simpan account.provider ke token
       if (account) {
         token.provider = account.provider;
       }
+
       if (user) {
         token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.username = user.username;
+        token.maxAge = user.maxAge;
       }
+
       return token;
     },
+
     async session({ session, token }) {
       session.user.id = token.id;
+      session.user.name = token.name;
+      session.user.username = token.username;
       session.user.provider = token.provider;
-      // console.log(token);
+
+      if (token.maxAge) {
+        session.maxAge = token.maxAge;
+      }
+
       return session;
     },
   },
+
+  pages: {
+    signIn: "/login",
+  },
+
+  events: {
+    async signIn({ user, account, profile }) {
+      console.log("User signed in:", {
+        id: user.id,
+        email: user.email,
+        provider: account.provider,
+      });
+    },
+    async signOut({ session, token }) {
+      console.log("User signed out:", {
+        id: token?.id,
+        email: token?.email,
+      });
+    },
+  },
+
   secret: process.env.NEXTAUTH_SECRET,
 };

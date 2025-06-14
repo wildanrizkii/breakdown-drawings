@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { MdEmail, MdLock, MdVisibility, MdVisibilityOff } from "react-icons/md";
 import toast from "react-hot-toast";
@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 
 const Login = () => {
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -16,34 +15,47 @@ const Login = () => {
 
   const router = useRouter();
 
+  // Load saved credentials on component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("remembered_email");
+    const savedRememberMe = localStorage.getItem("remember_me") === "true";
+
+    if (savedEmail && savedRememberMe) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
+  // Save or clear credentials based on remember me setting
+  const handleRememberMe = (email, remember) => {
+    if (remember) {
+      localStorage.setItem("remembered_email", email);
+      localStorage.setItem("remember_me", "true");
+    } else {
+      localStorage.removeItem("remembered_email");
+      localStorage.removeItem("remember_me");
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       setIsLoading(true);
-      setError(""); // Clear previous errors
+      setError("");
 
       // Basic validation
       if (!email || !password) {
-        const errorMessage = "Harap isi email dan password!";
+        const errorMessage = "Please fill in email and password!";
         setError(errorMessage);
-        toast.error({
-          message: "Error",
-          description: errorMessage,
-          placement: "top",
-          duration: 3,
-        });
+        toast.error(errorMessage);
         setIsLoading(false);
         return;
       }
 
       if (email.length < 4 || password.length < 4) {
-        const errorMessage = "Email dan password minimal 4 karakter!";
+        const errorMessage =
+          "Email and password must be at least 4 characters!";
         setError(errorMessage);
-        toast.error({
-          message: "Error",
-          description: errorMessage,
-          placement: "top",
-          duration: 3,
-        });
+        toast.error(errorMessage);
         setIsLoading(false);
         return;
       }
@@ -51,109 +63,91 @@ const Login = () => {
       // Email format validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        const errorMessage = "Format email tidak valid!";
+        const errorMessage = "Invalid email format!";
         setError(errorMessage);
-        toast.error({
-          message: "Error",
-          description: errorMessage,
-          placement: "top",
-          duration: 3,
-        });
+        toast.error(errorMessage);
         setIsLoading(false);
         return;
       }
 
+      // Configure session duration based on remember me
+      const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 30 days vs 1 day
+
       const response = await signIn("credentials", {
         email: email,
         password: password,
+        maxAge: maxAge.toString(), // Kirim maxAge sebagai string
         redirect: false,
+        callbackUrl: "/",
       });
 
       if (response?.error) {
-        let errorMessage = "Terjadi kesalahan saat login!";
+        let errorMessage = "An error occurred during login!";
 
-        // Handle specific error types
         switch (response.error) {
           case "CredentialsSignin":
-            errorMessage = "Email atau password yang Anda masukkan salah!";
+            errorMessage = "The email or password you entered is incorrect!";
             break;
           case "Configuration":
-            errorMessage = "Terjadi kesalahan konfigurasi sistem!";
+            errorMessage = "System configuration error occurred!";
             break;
           case "AccessDenied":
-            errorMessage = "Akses ditolak! Hubungi administrator.";
+            errorMessage = "Access denied! Contact administrator.";
             break;
           case "Verification":
-            errorMessage = "Email Anda belum diverifikasi!";
+            errorMessage = "Your email has not been verified!";
             break;
           default:
-            // Check if it's a network error or other specific errors
             if (response.error.includes("fetch")) {
-              errorMessage = "Koneksi bermasalah! Periksa internet Anda.";
+              errorMessage = "Connection problem! Check your internet.";
             } else if (response.error.includes("timeout")) {
-              errorMessage = "Koneksi timeout! Coba lagi.";
+              errorMessage = "Connection timeout! Try again.";
             }
         }
 
         setError(errorMessage);
-        toast.error({
-          message: "Login Gagal",
-          description: errorMessage,
-          placement: "top",
-          duration: 4,
-        });
+        toast.error(errorMessage);
         setIsLoading(false);
-      } else if (response?.ok) {
-        // Success
-        toast.success({
-          message: "Berhasil!",
-          description: "Login berhasil! Mengarahkan ke dashboard...",
-          placement: "top",
-          duration: 2,
-        });
 
-        // Clear form data if not remembering
+        // Don't save credentials if login failed
+        if (rememberMe) {
+          handleRememberMe("", false);
+        }
+      } else if (response?.ok) {
+        // Success - handle remember me
+        handleRememberMe(email, rememberMe);
+
+        toast.success("Login successful! Redirecting to dashboard...");
+
+        // Clear password but keep email if remembering
+        setPassword("");
         if (!rememberMe) {
           setEmail("");
-          setPassword("");
         }
 
         router.push("/");
       } else {
-        // Unexpected response
-        const errorMessage = "Respons tidak dikenal dari server!";
+        const errorMessage = "Unknown response from server!";
         setError(errorMessage);
-        toast.error({
-          message: "Error",
-          description: errorMessage,
-          placement: "top",
-          duration: 3,
-        });
+        toast.error(errorMessage);
         setIsLoading(false);
       }
     } catch (error) {
       console.error("Error during login:", error);
 
-      let errorMessage = "Terjadi kesalahan tidak terduga!";
+      let errorMessage = "An unexpected error occurred!";
 
-      // Handle different types of errors
       if (error.name === "TypeError" && error.message.includes("fetch")) {
         errorMessage =
-          "Tidak dapat terhubung ke server! Periksa koneksi internet.";
+          "Cannot connect to server! Check your internet connection.";
       } else if (error.name === "AbortError") {
-        errorMessage = "Request dibatalkan! Coba lagi.";
+        errorMessage = "Request was cancelled! Try again.";
       } else if (error.message) {
         errorMessage = `Error: ${error.message}`;
       }
 
       setError(errorMessage);
-      toast.error({
-        message: "Error Sistem",
-        description: errorMessage,
-        placement: "top",
-        duration: 4,
-      });
-
+      toast.error(errorMessage);
       setIsLoading(false);
     }
   };
@@ -177,6 +171,17 @@ const Login = () => {
   const handlePasswordChange = (e) => {
     setPassword(e.target.value);
     if (error) setError("");
+  };
+
+  // Handle remember me toggle
+  const handleRememberToggle = () => {
+    const newRememberMe = !rememberMe;
+    setRememberMe(newRememberMe);
+
+    // If turning off remember me, clear stored credentials
+    if (!newRememberMe) {
+      handleRememberMe("", false);
+    }
   };
 
   return (
@@ -276,7 +281,7 @@ const Login = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setRememberMe(!rememberMe)}
+                onClick={handleRememberToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
                   rememberMe ? "bg-purple-600" : "bg-gray-200"
                 }`}

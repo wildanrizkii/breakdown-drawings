@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { User, Mail, Lock, Eye, EyeOff, Check } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import supabase from "@/app/utils/db";
 import bcryptjs from "bcryptjs";
+import toast from "react-hot-toast";
 
 const Profile = () => {
   const [formData, setFormData] = useState({
@@ -45,7 +46,7 @@ const Profile = () => {
       }
     } catch (error) {
       console.error("Error fetching data: ", error);
-      alert("Error fetching data: " + error.message);
+      toast.error("Error fetching data: " + error.message);
     }
   };
 
@@ -60,8 +61,6 @@ const Profile = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -69,10 +68,6 @@ const Profile = () => {
       ...prev,
       [name]: value,
     }));
-
-    // Clear messages when user starts typing
-    if (errorMessage) setErrorMessage("");
-    if (successMessage) setSuccessMessage("");
   };
 
   const togglePasswordVisibility = (field) => {
@@ -96,37 +91,37 @@ const Profile = () => {
 
     // If no changes made
     if (!basicInfoChanged && !passwordFieldsFilled) {
-      setErrorMessage("Tidak ada perubahan yang dibuat");
+      toast.error("No changes have been made");
       return false;
     }
 
     // If password fields are partially filled
     if (passwordFieldsFilled) {
       if (!formData.currentPassword) {
-        setErrorMessage("Password saat ini harus diisi");
+        toast.error("Current password is required");
         return false;
       }
       if (!formData.newPassword) {
-        setErrorMessage("Password baru harus diisi");
+        toast.error("New password is required");
         return false;
       }
       if (!formData.confirmPassword) {
-        setErrorMessage("Konfirmasi password harus diisi");
+        toast.error("Password confirmation is required");
         return false;
       }
       if (formData.newPassword.length < 8) {
-        setErrorMessage("Password baru minimal 8 karakter");
+        toast.error("New password must be at least 8 characters");
         return false;
       }
       if (formData.newPassword !== formData.confirmPassword) {
-        setErrorMessage("Password baru dan konfirmasi tidak cocok");
+        toast.error("New password and confirmation do not match");
         return false;
       }
     }
 
     // Email validation
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      setErrorMessage("Format email tidak valid");
+      toast.error("Invalid email format");
       return false;
     }
 
@@ -137,7 +132,6 @@ const Profile = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setErrorMessage("");
 
     try {
       let updateData = {};
@@ -160,7 +154,8 @@ const Profile = () => {
         if (emailCheckError) throw emailCheckError;
 
         if (existingUser && existingUser.length > 0) {
-          throw new Error("Email sudah digunakan oleh pengguna lain");
+          toast.error("Email is already in use by another user");
+          return;
         }
 
         updateData.email = formData.email.trim();
@@ -176,7 +171,8 @@ const Profile = () => {
         );
 
         if (!isCurrentPasswordValid) {
-          throw new Error("Password saat ini tidak benar");
+          toast.error("Current password is incorrect");
+          return;
         }
 
         // Hash new password
@@ -214,13 +210,12 @@ const Profile = () => {
           confirmPassword: "",
         }));
 
-        setSuccessMessage("Profil berhasil diperbarui");
-        setTimeout(() => setSuccessMessage(""), 5000);
+        toast.success("Profile updated successfully");
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      setErrorMessage(
-        error.message || "Terjadi kesalahan saat memperbarui profil"
+      toast.error(
+        error.message || "An error occurred while updating the profile"
       );
     } finally {
       setIsLoading(false);
@@ -231,38 +226,25 @@ const Profile = () => {
   const doPasswordsMatch = formData.newPassword === formData.confirmPassword;
 
   return (
-    <div className="">
+    <div className="max-w-md">
       <div className="mx-auto">
         <div className="">
           <h1 className="text-xl font-semibold text-gray-900">
-            Pengaturan Akun
+            Account Settings
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            Kelola informasi profil Anda
+            Manage your profile information
           </p>
         </div>
 
-        {successMessage && (
-          <div className="mx-6 mt-6 p-3 bg-green-50 border border-green-200 rounded-md flex items-center gap-2">
-            <Check className="w-4 h-4 text-green-600" />
-            <span className="text-sm text-green-700">{successMessage}</span>
-          </div>
-        )}
-
-        {errorMessage && (
-          <div className="mx-6 mt-6 p-3 bg-red-50 border border-red-200 rounded-md">
-            <span className="text-sm text-red-700">{errorMessage}</span>
-          </div>
-        )}
-
         <div className="pt-6 space-y-6">
-          {/* Nama */}
+          {/* Full Name */}
           <div>
             <label
               htmlFor="name"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Nama Lengkap
+              Full Name
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -273,7 +255,7 @@ const Profile = () => {
                 value={formData.name}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Masukkan nama lengkap"
+                placeholder="Enter your full name"
               />
             </div>
           </div>
@@ -295,7 +277,7 @@ const Profile = () => {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Masukkan email"
+                placeholder="Enter your email"
               />
             </div>
           </div>
@@ -303,17 +285,17 @@ const Profile = () => {
           {/* Divider */}
           <div className="border-t border-gray-100 pt-6">
             <h3 className="text-sm font-medium text-gray-900 mb-4">
-              Ubah Password
+              Change Password
             </h3>
           </div>
 
-          {/* Password Saat Ini */}
+          {/* Current Password */}
           <div>
             <label
               htmlFor="currentPassword"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Password Saat Ini
+              Current Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -324,7 +306,7 @@ const Profile = () => {
                 value={formData.currentPassword}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Masukkan password saat ini"
+                placeholder="Enter your current password"
               />
               <button
                 type="button"
@@ -340,13 +322,13 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Password Baru */}
+          {/* New Password */}
           <div>
             <label
               htmlFor="newPassword"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Password Baru
+              New Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -357,7 +339,7 @@ const Profile = () => {
                 value={formData.newPassword}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Masukkan password baru"
+                placeholder="Enter your new password"
               />
               <button
                 type="button"
@@ -373,18 +355,18 @@ const Profile = () => {
             </div>
             {formData.newPassword && !isPasswordValid && (
               <p className="text-xs text-red-600 mt-1">
-                Password minimal 8 karakter
+                Password must be at least 8 characters
               </p>
             )}
           </div>
 
-          {/* Konfirmasi Password */}
+          {/* Confirm Password */}
           <div>
             <label
               htmlFor="confirmPassword"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Konfirmasi Password Baru
+              Confirm New Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -395,7 +377,7 @@ const Profile = () => {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Konfirmasi password baru"
+                placeholder="Confirm your new password"
               />
               <button
                 type="button"
@@ -410,7 +392,9 @@ const Profile = () => {
               </button>
             </div>
             {formData.confirmPassword && !doPasswordsMatch && (
-              <p className="text-xs text-red-600 mt-1">Password tidak cocok</p>
+              <p className="text-xs text-red-600 mt-1">
+                Passwords do not match
+              </p>
             )}
           </div>
 
@@ -422,7 +406,7 @@ const Profile = () => {
               disabled={isLoading}
               className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
             >
-              {isLoading ? "Menyimpan..." : "Simpan Perubahan"}
+              {isLoading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
