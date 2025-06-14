@@ -10,8 +10,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata = {
-  title: "Tag Spare Part",
-  description: "Tag Spare Part Web",
+  title: "Breakdown Drawings",
+  description: "Upload image, tag items and save the image",
 };
 
 export const viewport = {
