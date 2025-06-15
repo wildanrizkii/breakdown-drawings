@@ -51,14 +51,18 @@ const ImageTaggingApp = () => {
   const [exportFormData, setExportFormData] = useState({
     partNo: "",
     partName: "",
-    customer: "PT. TOYO DENSO INDONESIA",
+    customer: "",
     project: "",
-    revisionDate: new Date().toLocaleDateString("id-ID"),
+    revisionDate: new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
     approvers: {
-      dibuat: "ADRIANO T.",
-      diperiksa1: "ANDIKA R.",
-      diperiksa2: "NASRULLILLAH",
-      disetujui: "NATA S.",
+      dibuat: "",
+      diperiksa1: "",
+      diperiksa2: "",
+      disetujui: "",
     },
     revisions: [
       { rev: "", description: "", date: "" },
@@ -67,7 +71,11 @@ const ImageTaggingApp = () => {
       {
         rev: "△",
         description: "New Release",
-        date: new Date().toLocaleDateString("id-ID"),
+        date: new Date().toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
       },
     ],
   });
@@ -1233,15 +1241,6 @@ const ImageTaggingApp = () => {
                     Download
                   </button>
                 )}
-                {cart.length > 0 && (
-                  <button
-                    onClick={showExportFormModal}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-                  >
-                    <FileSpreadsheet size={16} />
-                    Export Excel
-                  </button>
-                )}
               </div>
             </div>
 
@@ -1255,7 +1254,7 @@ const ImageTaggingApp = () => {
 
             <div className="relative">
               {uploadedImage ? (
-                <div className="relative inline-block">
+                <div className="relative flex justify-center">
                   <img
                     ref={imageRef}
                     src={uploadedImage}
@@ -1464,7 +1463,7 @@ const ImageTaggingApp = () => {
                       : "Click to upload or drag and drop an image"}
                   </p>
                   <p className="text-sm text-gray-400">
-                    PNG, JPG, GIF hingga 10MB
+                    PNG, JPG, GIF up to 10MB
                   </p>
                 </div>
               )}
@@ -1482,11 +1481,22 @@ const ImageTaggingApp = () => {
 
           {/* Cart Section with Full Table */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
-              <List size={22} />
-              Selected Items{" "}
-              <span className="text-blue-600">({cart.length})</span>
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <List size={22} />
+                Selected Items{" "}
+                <span className="text-blue-600">({cart.length})</span>
+              </h2>
+              {cart.length > 0 && (
+                <button
+                  onClick={showExportFormModal}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                  <FileSpreadsheet size={16} />
+                  Export Excel
+                </button>
+              )}
+            </div>
 
             {cart.length === 0 ? (
               <p className="text-gray-500 text-center py-10">
@@ -1613,7 +1623,10 @@ const ImageTaggingApp = () => {
 
         {/* Export Form Modal */}
         {showExportForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div
+            className="fixed inset-0 flex items-center justify-center z-50"
+            style={{ backgroundColor: "rgba(75, 85, 99, 0.4)" }}
+          >
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -1925,10 +1938,16 @@ const ImageTaggingApp = () => {
           <div
             className="fixed bg-white rounded-lg shadow-xl border z-50 flex flex-col"
             style={{
-              left: `${dropdownPosition.x}px`,
-              top: `${dropdownPosition.y}px`,
-              width: "400px",
-              height: "520px",
+              left: `${Math.max(
+                10,
+                Math.min(dropdownPosition.x, window.innerWidth - 410)
+              )}px`,
+              top: `${Math.max(
+                10,
+                Math.min(dropdownPosition.y, window.innerHeight - 530)
+              )}px`,
+              width: "min(400px, calc(100vw - 20px))",
+              height: "min(520px, calc(100vh - 20px))",
             }}
           >
             {/* Header - Fixed */}
