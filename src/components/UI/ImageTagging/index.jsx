@@ -29,6 +29,11 @@ const ImageTaggingApp = () => {
     width: 0,
     height: 0,
   });
+  // New states for image dimensions
+  const [imageDisplaySize, setImageDisplaySize] = useState({
+    width: 0,
+    height: 0,
+  });
   const [draggedTag, setDraggedTag] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragOver, setIsDragOver] = useState(false);
@@ -46,20 +51,14 @@ const ImageTaggingApp = () => {
   const [exportFormData, setExportFormData] = useState({
     partNo: "",
     partName: "",
-    customer: "",
+    customer: "PT. TOYO DENSO INDONESIA",
     project: "",
-    revisionDate:
-      "00/" +
-      new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
+    revisionDate: new Date().toLocaleDateString("id-ID"),
     approvers: {
-      dibuat: "",
-      diperiksa1: "",
-      diperiksa2: "",
-      disetujui: "",
+      dibuat: "ADRIANO T.",
+      diperiksa1: "ANDIKA R.",
+      diperiksa2: "NASRULLILLAH",
+      disetujui: "NATA S.",
     },
     revisions: [
       { rev: "", description: "", date: "" },
@@ -68,11 +67,7 @@ const ImageTaggingApp = () => {
       {
         rev: "△",
         description: "New Release",
-        date: new Date().toLocaleDateString("id-ID", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
+        date: new Date().toLocaleDateString("id-ID"),
       },
     ],
   });
@@ -286,6 +281,34 @@ const ImageTaggingApp = () => {
           width: img.naturalWidth,
           height: img.naturalHeight,
         });
+
+        // Calculate display size with max constraints
+        const maxWidth = 800; // Maximum width
+        const maxHeight = 600; // Maximum height
+
+        let displayWidth = img.naturalWidth;
+        let displayHeight = img.naturalHeight;
+
+        // Scale down if image is too large
+        if (displayWidth > maxWidth || displayHeight > maxHeight) {
+          const widthRatio = maxWidth / displayWidth;
+          const heightRatio = maxHeight / displayHeight;
+          const ratio = Math.min(widthRatio, heightRatio);
+
+          displayWidth = displayWidth * ratio;
+          displayHeight = displayHeight * ratio;
+        }
+
+        setImageDisplaySize({
+          width: displayWidth,
+          height: displayHeight,
+        });
+
+        // Set the image size after it loads
+        if (imageRef.current) {
+          imageRef.current.style.width = `${displayWidth}px`;
+          imageRef.current.style.height = `${displayHeight}px`;
+        }
       };
       img.src = e.target.result;
     };
@@ -308,8 +331,9 @@ const ImageTaggingApp = () => {
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
 
-    const percentageX = clickX / img.clientWidth;
-    const percentageY = clickY / img.clientHeight;
+    // Use the fixed display size instead of current client size
+    const percentageX = clickX / imageDisplaySize.width;
+    const percentageY = clickY / imageDisplaySize.height;
 
     const canvasX = percentageX * imageNaturalSize.width;
     const canvasY = percentageY * imageNaturalSize.height;
@@ -378,8 +402,9 @@ const ImageTaggingApp = () => {
 
     const tag = tags.find((t) => t.id === tagId);
     if (tag) {
-      const currentDisplayX = tag.percentageX * imageRef.current.clientWidth;
-      const currentDisplayY = tag.percentageY * imageRef.current.clientHeight;
+      // Use fixed display size for calculations
+      const currentDisplayX = tag.percentageX * imageDisplaySize.width;
+      const currentDisplayY = tag.percentageY * imageDisplaySize.height;
 
       setDraggedTag(tagId);
       setDragOffset({
@@ -401,11 +426,12 @@ const ImageTaggingApp = () => {
     const newX = offsetX - dragOffset.x;
     const newY = offsetY - dragOffset.y;
 
-    const clampedX = Math.max(0, Math.min(newX, imageRef.current.clientWidth));
-    const clampedY = Math.max(0, Math.min(newY, imageRef.current.clientHeight));
+    // Use fixed display size for boundary checks
+    const clampedX = Math.max(0, Math.min(newX, imageDisplaySize.width));
+    const clampedY = Math.max(0, Math.min(newY, imageDisplaySize.height));
 
-    const newPercentageX = clampedX / imageRef.current.clientWidth;
-    const newPercentageY = clampedY / imageRef.current.clientHeight;
+    const newPercentageX = clampedX / imageDisplaySize.width;
+    const newPercentageY = clampedY / imageDisplaySize.height;
 
     setTags((prev) =>
       prev.map((tag) =>
@@ -1154,7 +1180,7 @@ const ImageTaggingApp = () => {
       // Create download link
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `export-breakdown-drawings-${
+      link.download = `supplier-maker-layout-${
         new Date().toISOString().split("T")[0]
       }.xlsx`;
       link.click();
@@ -1172,7 +1198,7 @@ const ImageTaggingApp = () => {
 
   return (
     <div className="h-fit">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Breakdown Drawings
@@ -1234,16 +1260,30 @@ const ImageTaggingApp = () => {
                     ref={imageRef}
                     src={uploadedImage}
                     alt="Uploaded"
-                    className="max-w-full h-auto rounded-lg shadow-md cursor-crosshair"
+                    className="rounded-lg shadow-md cursor-crosshair object-contain"
                     onClick={handleImageClick}
+                    style={{
+                      width: `${imageDisplaySize.width}px`,
+                      height: `${imageDisplaySize.height}px`,
+                      maxWidth: "none",
+                      display: "block",
+                    }}
+                    onLoad={() => {
+                      // Ensure size is maintained after image loads
+                      if (imageRef.current && imageDisplaySize.width > 0) {
+                        imageRef.current.style.width = `${imageDisplaySize.width}px`;
+                        imageRef.current.style.height = `${imageDisplaySize.height}px`;
+                      }
+                    }}
                   />
 
                   {/* Render tags */}
                   {tags.map((tag, index) => {
+                    // Use fixed display size for tag positioning
                     const currentDisplayX =
-                      tag.percentageX * (imageRef.current?.clientWidth || 0);
+                      tag.percentageX * imageDisplaySize.width;
                     const currentDisplayY =
-                      tag.percentageY * (imageRef.current?.clientHeight || 0);
+                      tag.percentageY * imageDisplaySize.height;
 
                     // Position popup calculations (same as before)
                     let popupLeft = "20px";
@@ -1253,8 +1293,9 @@ const ImageTaggingApp = () => {
                     if (imageRef.current) {
                       const imageRect =
                         imageRef.current.getBoundingClientRect();
-                      const imageWidth = imageRect.width;
-                      const imageHeight = imageRect.height;
+                      // Use fixed display size instead of current bounding rect
+                      const imageWidth = imageDisplaySize.width;
+                      const imageHeight = imageDisplaySize.height;
 
                       const popupWidth = 250;
                       const popupHeight = 150;
@@ -1468,31 +1509,10 @@ const ImageTaggingApp = () => {
                           Part No
                         </th>
                         <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          Qty
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
                           Honda
                         </th>
                         <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
                           CMW
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          Unit
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          EQ Supply
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          Material
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          Import
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          Lokal
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          Maker
                         </th>
                       </tr>
                     </thead>
@@ -1515,32 +1535,11 @@ const ImageTaggingApp = () => {
                           <td className="border border-gray-200 px-3 py-2 text-gray-600">
                             {item.partNo}
                           </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600 font-medium">
-                            {item.quantity}
-                          </td>
                           <td className="border border-gray-200 px-3 py-2 text-gray-600">
                             {item.hondaName}
                           </td>
                           <td className="border border-gray-200 px-3 py-2 text-gray-600">
                             {item.cmwName}
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                            {item.unitName}
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                            {item.eqSupplyName}
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                            {item.materialName}
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                            {item.importName}
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                            {item.lokalName}
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                            {item.makerName}
                           </td>
                         </tr>
                       ))}
@@ -1614,11 +1613,8 @@ const ImageTaggingApp = () => {
 
         {/* Export Form Modal */}
         {showExportForm && (
-          <div
-            className="fixed inset-0 flex items-center justify-center z-50"
-            style={{ backgroundColor: "rgba(75, 85, 99, 0.4)" }}
-          >
-            <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-semibold text-gray-800">
@@ -1717,7 +1713,7 @@ const ImageTaggingApp = () => {
                             )
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Revision Date"
+                          placeholder="DD/MM/YYYY"
                         />
                       </div>
                     </div>
@@ -1785,7 +1781,7 @@ const ImageTaggingApp = () => {
                                 )
                               }
                               className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="Date"
+                              placeholder="DD/MM/YYYY"
                             />
                           </div>
                         </div>
