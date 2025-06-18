@@ -1096,9 +1096,9 @@ const ImageTaggingApp = () => {
         const row = worksheet.addRow({
           no: index + 1,
           partNoInduk:
-            item.partNoInduk === "-"
+            item.hondaName === "-"
               ? ""
-              : item.partNoInduk || item.partNo || "",
+              : item.hondaName || item.hondaName || "",
           partNoAnak: item.partNoAnak === "-" ? "" : item.partNoAnak || "",
           partNoChw: item.partNo === "-" ? "" : item.partNo || "",
           partName: item.partName,
