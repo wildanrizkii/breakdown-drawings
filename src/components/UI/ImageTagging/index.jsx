@@ -823,6 +823,8 @@ const ImageTaggingApp = () => {
     };
 
     img.src = uploadedImage;
+
+    toast.success("Your image has been saved to your device");
   }, [uploadedImage, tags]);
 
   // Handle export form input changes
