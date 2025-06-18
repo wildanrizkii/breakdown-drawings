@@ -54,11 +54,13 @@ const ImageTaggingApp = () => {
     partName: "",
     customer: "",
     project: "",
-    revisionDate: new Date().toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }),
+    revisionDate:
+      "00/" +
+      new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
     approvers: {
       dibuat: "",
       diperiksa1: "",
@@ -1732,7 +1734,7 @@ const ImageTaggingApp = () => {
 
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Revision Date
+                          Revision / Date
                         </label>
                         <input
                           type="text"
