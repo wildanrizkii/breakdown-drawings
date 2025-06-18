@@ -1529,13 +1529,13 @@ const ImageTaggingApp = () => {
                           Part Name
                         </th>
                         <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Part No Induk
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                          Part No CMW
+                        </th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
                           Qty
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          Honda
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          CMW
                         </th>
                       </tr>
                     </thead>
@@ -1555,14 +1555,15 @@ const ImageTaggingApp = () => {
                               </span>
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600 font-medium">
-                            {item.quantity}
-                          </td>
+
                           <td className="border border-gray-200 px-3 py-2 text-gray-600">
                             {item.hondaName}
                           </td>
                           <td className="border border-gray-200 px-3 py-2 text-gray-600">
                             {item.cmwName}
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600 font-medium">
+                            {item.quantity}
                           </td>
                         </tr>
                       ))}
@@ -2051,7 +2052,7 @@ const ImageTaggingApp = () => {
                                 Part No: {item.partNo}
                               </div>
                               <div className="truncate">
-                                Honda: {item.hondaName}
+                                Part No Induk: {item.hondaName}
                               </div>
                               <div className="truncate">
                                 CMW: {item.cmwName}
