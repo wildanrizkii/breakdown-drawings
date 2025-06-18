@@ -1214,6 +1214,8 @@ const ImageTaggingApp = () => {
 
       // Close the form
       setShowExportForm(false);
+
+      toast.success("Excel file successfully saved to your device");
     } catch (error) {
       toast.error("Error exporting to Excel: " + error.message);
     }
