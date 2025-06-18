@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import supabase from "@/app/utils/db";
 import * as ExcelJS from "exceljs";
+import toast from "react-hot-toast";
 
 const ImageTaggingApp = () => {
   const [uploadedImage, setUploadedImage] = useState(null);
@@ -180,7 +181,7 @@ const ImageTaggingApp = () => {
       setDatabaseItems(uniqueItems);
     } catch (error) {
       console.error("Error fetching main_part data: ", error);
-      alert("Error fetching main_part data: " + error.message);
+      toast.error("Error fetching main_part data: " + error.message);
     }
   };
 
@@ -283,7 +284,7 @@ const ImageTaggingApp = () => {
       if (file.type.startsWith("image/")) {
         processImageFile(file);
       } else {
-        alert("Harap upload file gambar (PNG, JPG, GIF)");
+        toast.error("Harap upload file gambar (PNG, JPG, GIF)");
       }
     }
   };
@@ -856,7 +857,7 @@ const ImageTaggingApp = () => {
   // Show export form
   const showExportFormModal = () => {
     if (cart.length === 0) {
-      alert("No items to export");
+      toast.error("No items to export");
       return;
     }
     setShowExportForm(true);
@@ -1212,8 +1213,7 @@ const ImageTaggingApp = () => {
       // Close the form
       setShowExportForm(false);
     } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      alert("Error exporting to Excel: " + error.message);
+      toast.error("Error exporting to Excel: " + error.message);
     }
   }, [cart, exportFormData]);
 
@@ -1486,7 +1486,7 @@ const ImageTaggingApp = () => {
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
                   <Tag className="inline w-4 h-4 mr-1" />
-                  Click on the image to add tags with multiple spare parts
+                  Click on the image to add tags with multiple item
                 </p>
               </div>
             )}

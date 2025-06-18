@@ -14,6 +14,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import supabase from "@/app/utils/db";
+import toast from "react-hot-toast";
 
 const Import = () => {
   const [allData, setAllData] = useState([]);
@@ -38,8 +39,7 @@ const Import = () => {
       }));
       setAllData(importData);
     } catch (error) {
-      console.error("Error fetching data: ", error);
-      alert("Error fetching data: " + error.message);
+      toast.error("Error fetching data: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -131,7 +131,7 @@ const Import = () => {
   // CRUD Operations with Supabase
   const handleAdd = async () => {
     if (!formData.nama.trim()) {
-      alert("Name cannot be empty!");
+      toast.error("Name cannot be empty!");
       return;
     }
 
@@ -151,10 +151,9 @@ const Import = () => {
 
       setAllData((prev) => [...prev, newItem]);
       closeAllModals();
-      alert("Data successfully added!");
+      toast.error("Data successfully added!");
     } catch (error) {
-      console.error("Error adding data: ", error);
-      alert("Error adding data: " + error.message);
+      toast.error("Error adding data: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -162,7 +161,7 @@ const Import = () => {
 
   const handleEdit = async () => {
     if (!formData.nama.trim()) {
-      alert("Name cannot be empty!");
+      toast.error("Name cannot be empty!");
       return;
     }
 
@@ -189,10 +188,9 @@ const Import = () => {
       );
 
       closeAllModals();
-      alert("Data successfully updated!");
+      toast.success("Data successfully updated!");
     } catch (error) {
-      console.error("Error updating data: ", error);
-      alert("Error updating data: " + error.message);
+      toast.error("Error updating data: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -214,10 +212,9 @@ const Import = () => {
       );
 
       closeAllModals();
-      alert("Data successfully deleted!");
+      toast.success("Data successfully deleted!");
     } catch (error) {
-      console.error("Error deleting data: ", error);
-      alert("Error deleting data: " + error.message);
+      toast.error("Error deleting data: " + error.message);
     } finally {
       setLoading(false);
     }

@@ -15,6 +15,7 @@ import {
   Eye,
 } from "lucide-react";
 import supabase from "@/app/utils/db";
+import toast from "react-hot-toast";
 
 // AutoComplete Input Component
 const AutoCompleteInput = ({
@@ -318,8 +319,7 @@ const MainPart = () => {
 
       setAllData(mainPartData);
     } catch (error) {
-      console.error("Error fetching data: ", error);
-      alert("Error fetching data: " + error.message);
+      toast.error("Error fetching data: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -485,10 +485,9 @@ const MainPart = () => {
 
       await fetchMainPart();
       closeAllModals();
-      alert("Data successfully deleted!");
+      toast.success("Data successfully deleted!");
     } catch (error) {
-      console.error("Error deleting data: ", error);
-      alert("Error deleting data: " + error.message);
+      toast.error("Error deleting data: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -531,7 +530,7 @@ const MainPart = () => {
   // Function to handle form submission with auto-insert for new reference data
   const handleFormSubmit = async (isAdd = true) => {
     if (!formData.part_name.trim() || !formData.part_no.trim()) {
-      alert("Part name and part no are required!");
+      toast.error("Part name and part no are required!");
       return;
     }
 
@@ -668,21 +667,21 @@ const MainPart = () => {
           .from("main_part")
           .insert([processedData]);
         if (error) throw error;
-        alert("Data successfully added!");
+        toast.success("Data successfully added!");
       } else {
         const { error } = await supabase
           .from("main_part")
           .update(processedData)
           .eq("id_main_part", selectedItem.id);
         if (error) throw error;
-        alert("Data successfully updated!");
+        toast.success("Data successfully updated!");
       }
 
       await fetchMainPart();
       closeAllModals();
     } catch (error) {
       console.error("Error saving data: ", error);
-      alert("Error saving data: " + error.message);
+      toast.error("Error saving data: " + error.message);
     } finally {
       setLoading(false);
     }
