@@ -22,11 +22,11 @@ const Header = ({ toggleSidebar, toggleCollapse, isCollapsed = true }) => {
       dashboard: "Dashboard",
       "manage-part": "Manage Part",
       "main-part": "Main Part",
+      "part-no-induk": "Part No Induk",
+      cmw: "Part No CMW",
       laporan: "Laporan",
       settings: "Settings",
       profile: "Profile",
-      eqmaker1: "EQ Maker 1",
-      eqmaker2: "EQ Maker 2",
     };
 
     const breadcrumbs = [{ label: "Dashboard", href: "/" }];
