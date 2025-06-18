@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import supabase from "@/app/utils/db";
 
-const EQMaker2 = () => {
+const CMW = () => {
   const [allData, setAllData] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,17 +26,17 @@ const EQMaker2 = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState({ nama: "" });
 
-  const fetchEQMaker2 = async () => {
+  const fetchCMW = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from("eq_maker_2").select("*");
+      const { data, error } = await supabase.from("cmw").select("*");
       if (error) throw error;
 
-      const eqmaker1Data = data.map((row) => ({
-        id: row.id_eq_maker_2,
+      const cmwData = data.map((row) => ({
+        id: row.id_cmw,
         nama: row.nama,
       }));
-      setAllData(eqmaker1Data);
+      setAllData(cmwData);
     } catch (error) {
       console.error("Error fetching data: ", error);
       alert("Error fetching data: " + error.message);
@@ -46,7 +46,7 @@ const EQMaker2 = () => {
   };
 
   useEffect(() => {
-    fetchEQMaker2();
+    fetchCMW();
   }, []);
 
   // State untuk search, pagination, dan sorting
@@ -138,14 +138,14 @@ const EQMaker2 = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from("eq_maker_2")
+        .from("cmw")
         .insert([{ nama: formData.nama.trim() }])
         .select();
 
       if (error) throw error;
 
       const newItem = {
-        id: data[0].id_eq_maker_2,
+        id: data[0].id_cmw,
         nama: data[0].nama,
       };
 
@@ -174,9 +174,9 @@ const EQMaker2 = () => {
     try {
       setLoading(true);
       const { error } = await supabase
-        .from("eq_maker_2")
+        .from("cmw")
         .update({ nama: formData.nama.trim() })
-        .eq("id_eq_maker_2", selectedItem.id);
+        .eq("id_cmw", selectedItem.id);
 
       if (error) throw error;
 
@@ -202,9 +202,9 @@ const EQMaker2 = () => {
     try {
       setLoading(true);
       const { error } = await supabase
-        .from("eq_maker_2")
+        .from("cmw")
         .delete()
-        .eq("id_eq_maker_2", selectedItem.id);
+        .eq("id_cmw", selectedItem.id);
 
       if (error) throw error;
 
@@ -274,7 +274,7 @@ const EQMaker2 = () => {
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h2 className="text-xl font-semibold text-gray-900">EQMaker2</h2>
+              <h2 className="text-xl font-semibold text-gray-900">CMW</h2>
               <span className="text-sm text-gray-500">
                 {filteredAndSortedData.length} Items
               </span>
@@ -504,21 +504,17 @@ const EQMaker2 = () => {
       </div>
 
       {/* Add Modal */}
-      <Modal
-        isOpen={showAddModal}
-        onClose={closeAllModals}
-        title="Add New EQMaker2"
-      >
+      <Modal isOpen={showAddModal} onClose={closeAllModals} title="Add New CMW">
         <div className="p-6">
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              EQMaker2 Name
+              CMW
             </label>
             <input
               type="text"
               value={formData.nama}
               onChange={(e) => setFormData({ nama: e.target.value })}
-              placeholder="Enter eqmaker1 name..."
+              placeholder="Enter CMW..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               autoFocus
             />
@@ -543,21 +539,17 @@ const EQMaker2 = () => {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={closeAllModals}
-        title="Edit EQMaker2"
-      >
+      <Modal isOpen={showEditModal} onClose={closeAllModals} title="Edit CMW">
         <div className="p-6">
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              EQMaker2 Name
+              CMW
             </label>
             <input
               type="text"
               value={formData.nama}
               onChange={(e) => setFormData({ nama: e.target.value })}
-              placeholder="Enter eqmaker1 name..."
+              placeholder="Enter cmw..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               autoFocus
             />
@@ -595,7 +587,7 @@ const EQMaker2 = () => {
           </div>
           <div className="text-center mb-6">
             <p className="text-gray-700">
-              Are you sure you want to delete the eqmaker1{" "}
+              Are you sure you want to delete the cmw{" "}
               <span className="font-semibold">"{selectedItem?.nama}"</span>?
             </p>
             <p className="text-sm text-gray-500 mt-2">
@@ -624,4 +616,4 @@ const EQMaker2 = () => {
   );
 };
 
-export default EQMaker2;
+export default CMW;

@@ -186,19 +186,32 @@ const ImageTaggingApp = () => {
 
   // Function to recalculate cart based on all tags
   const recalculateCart = (updatedTags) => {
-    const uniqueItems = new Map();
+    const itemCounts = new Map();
 
-    // Collect unique items from all tags
+    // Count occurrences of each item across all tags
     updatedTags.forEach((tag) => {
       tag.items.forEach((item) => {
-        if (!uniqueItems.has(item.id)) {
-          uniqueItems.set(item.id, item);
+        const currentCount = itemCounts.get(item.id) || 0;
+        itemCounts.set(item.id, currentCount + 1);
+      });
+    });
+
+    // Create cart with counted quantities
+    const newCart = [];
+    const addedItems = new Set();
+
+    updatedTags.forEach((tag) => {
+      tag.items.forEach((item) => {
+        if (!addedItems.has(item.id)) {
+          addedItems.add(item.id);
+          newCart.push({
+            ...item,
+            quantity: itemCounts.get(item.id), // Use counted quantity instead of database quantity
+          });
         }
       });
     });
 
-    // Update cart with original quantities from item data
-    const newCart = Array.from(uniqueItems.values());
     setCart(newCart);
   };
 
@@ -1206,7 +1219,7 @@ const ImageTaggingApp = () => {
 
   return (
     <div className="h-fit">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Breakdown Drawings
@@ -1254,7 +1267,7 @@ const ImageTaggingApp = () => {
 
             <div className="relative">
               {uploadedImage ? (
-                <div className="relative flex justify-center">
+                <div className="relative inline-block">
                   <img
                     ref={imageRef}
                     src={uploadedImage}
@@ -1403,7 +1416,7 @@ const ImageTaggingApp = () => {
                                     Part No: {item.partNo}
                                   </div>
                                   <div className="text-xs text-gray-500 ml-5">
-                                    Honda: {item.hondaName}
+                                    Part No Induk: {item.hondaName}
                                   </div>
                                   <div className="text-xs text-gray-500 ml-5">
                                     CMW: {item.cmwName}
@@ -1463,7 +1476,7 @@ const ImageTaggingApp = () => {
                       : "Click to upload or drag and drop an image"}
                   </p>
                   <p className="text-sm text-gray-400">
-                    PNG, JPG, GIF up to 10MB
+                    PNG, JPG, GIF hingga 10MB
                   </p>
                 </div>
               )}
@@ -1516,7 +1529,7 @@ const ImageTaggingApp = () => {
                           Part Name
                         </th>
                         <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                          Part No
+                          Qty
                         </th>
                         <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
                           Honda
@@ -1542,8 +1555,8 @@ const ImageTaggingApp = () => {
                               </span>
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                            {item.partNo}
+                          <td className="border border-gray-200 px-3 py-2 text-gray-600 font-medium">
+                            {item.quantity}
                           </td>
                           <td className="border border-gray-200 px-3 py-2 text-gray-600">
                             {item.hondaName}
@@ -1815,7 +1828,7 @@ const ImageTaggingApp = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Dibuat (Created by)
+                          Dibuat
                         </label>
                         <input
                           type="text"
@@ -1833,7 +1846,7 @@ const ImageTaggingApp = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Diperiksa 1 (Checked by 1)
+                          Diperiksa 1
                         </label>
                         <input
                           type="text"
@@ -1851,7 +1864,7 @@ const ImageTaggingApp = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Diperiksa 2 (Checked by 2)
+                          Diperiksa 2
                         </label>
                         <input
                           type="text"
@@ -1869,7 +1882,7 @@ const ImageTaggingApp = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Disetujui (Approved by)
+                          Disetujui
                         </label>
                         <input
                           type="text"

@@ -1,11 +1,11 @@
 import React from "react";
-import EQMaker2 from "@/components/UI/ManagePart/EQMaker2";
 import Layout from "@/components/Layout";
+import PartNoInduk from "@/components/UI/ManagePart/PartNoInduk";
 
 const page = () => {
   return (
     <Layout>
-      <EQMaker2 />
+      <PartNoInduk />
     </Layout>
   );
 };

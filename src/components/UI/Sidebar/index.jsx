@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { RiDashboardLine, RiAdminLine } from "react-icons/ri";
+import { LuCodesandbox, LuBox } from "react-icons/lu";
 import {
   IoChevronUpOutline,
   IoChevronDownOutline,
@@ -40,6 +41,16 @@ const NAVIGATION_ITEMS = [
         icon: <PiToolbox size={22} />,
       },
       {
+        name: "Part No Induk",
+        href: "/manage-part/part-no-induk",
+        icon: <LuBox size={22} />,
+      },
+      {
+        name: "CMW",
+        href: "/manage-part/cmw",
+        icon: <LuCodesandbox size={22} />,
+      },
+      {
         name: "Material",
         href: "/manage-part/material",
         icon: <LuPackage size={22} />,
@@ -67,16 +78,6 @@ const NAVIGATION_ITEMS = [
       {
         name: "Supply",
         href: "/manage-part/supply",
-        icon: <LiaDatabaseSolid size={22} />,
-      },
-      {
-        name: "EQ Maker 1",
-        href: "/manage-part/eqmaker1",
-        icon: <LiaDatabaseSolid size={22} />,
-      },
-      {
-        name: "EQ Maker 2",
-        href: "/manage-part/eqmaker2",
         icon: <LiaDatabaseSolid size={22} />,
       },
     ],

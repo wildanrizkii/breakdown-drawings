@@ -212,7 +212,6 @@ const MainPart = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState({
     part_name: "",
-    quantity: "",
     part_no: "",
     id_honda: "",
     id_cmw: "",
@@ -272,7 +271,6 @@ const MainPart = () => {
           `
           id_main_part,
           part_name,
-          quantity,
           part_no,
           id_honda,
           id_cmw,
@@ -299,7 +297,6 @@ const MainPart = () => {
       const mainPartData = data.map((row) => ({
         id: row.id_main_part,
         part_name: row.part_name,
-        quantity: row.quantity,
         part_no: row.part_no,
         id_honda: row.id_honda,
         id_cmw: row.id_cmw,
@@ -361,12 +358,6 @@ const MainPart = () => {
       const aValue = a[sortConfig.field] || "";
       const bValue = b[sortConfig.field] || "";
 
-      if (sortConfig.field === "quantity") {
-        return sortConfig.order === "asc"
-          ? Number(aValue) - Number(bValue)
-          : Number(bValue) - Number(aValue);
-      }
-
       const aString = aValue.toString().toLowerCase();
       const bString = bValue.toString().toLowerCase();
 
@@ -413,7 +404,6 @@ const MainPart = () => {
   const openAddModal = () => {
     setFormData({
       part_name: "",
-      quantity: "",
       part_no: "",
       id_honda: "",
       id_cmw: "",
@@ -431,7 +421,6 @@ const MainPart = () => {
     setSelectedItem(item);
     setFormData({
       part_name: item.part_name,
-      quantity: item.quantity,
       part_no: item.part_no,
       id_honda: item.id_honda || "",
       id_cmw: item.id_cmw || "",
@@ -463,7 +452,6 @@ const MainPart = () => {
     setSelectedItem(null);
     setFormData({
       part_name: "",
-      quantity: "",
       part_no: "",
       id_honda: "",
       id_cmw: "",
@@ -553,7 +541,6 @@ const MainPart = () => {
       // Prepare data for insertion/update
       let processedData = {
         part_name: formData.part_name.trim(),
-        quantity: formData.quantity || 0,
         part_no: formData.part_no.trim(),
         id_honda: null,
         id_cmw: null,
@@ -761,29 +748,20 @@ const MainPart = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <button
+                    onClick={() => handleSort("honda_name")}
+                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors duration-150"
+                  >
+                    <span>Part No Induk</span>
+                    {getSortIcon("honda_name")}
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <button
                     onClick={() => handleSort("part_no")}
                     className="flex items-center space-x-1 hover:text-gray-700 transition-colors duration-150"
                   >
                     <span>Part No</span>
                     {getSortIcon("part_no")}
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <button
-                    onClick={() => handleSort("quantity")}
-                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors duration-150"
-                  >
-                    <span>Qty</span>
-                    {getSortIcon("quantity")}
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <button
-                    onClick={() => handleSort("honda_name")}
-                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors duration-150"
-                  >
-                    <span>Honda</span>
-                    {getSortIcon("honda_name")}
                   </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -818,18 +796,15 @@ const MainPart = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.part_no}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.quantity}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
                       <div
                         className="truncate max-w-xs"
                         title={item.honda_name}
                       >
                         {item.honda_name}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {item.part_no}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <div
@@ -1030,13 +1005,13 @@ const MainPart = () => {
             {/* Honda */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Honda
+                Part No Induk
               </label>
               <AutoCompleteInput
                 value={formData.id_honda}
                 onChange={(value) => handleFormDataChange("id_honda", value)}
                 options={hondaOptions}
-                placeholder="Select or type Honda..."
+                placeholder="Select or type Part No Induk..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2"
               />
             </div>
@@ -1069,10 +1044,10 @@ const MainPart = () => {
               />
             </div>
 
-            {/* EQ Supply */}
+            {/* Supply */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                EQ Supply 1
+                Supply
               </label>
               <AutoCompleteInput
                 value={formData.id_eq_supply_1}
@@ -1080,7 +1055,7 @@ const MainPart = () => {
                   handleFormDataChange("id_eq_supply_1", value)
                 }
                 options={eqSupplyOptions}
-                placeholder="Select or type EQ Supply..."
+                placeholder="Select or type Supply..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -1140,22 +1115,6 @@ const MainPart = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-
-            {/* Quantity */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity
-              </label>
-              <input
-                type="number"
-                value={formData.quantity}
-                onChange={(e) =>
-                  handleFormDataChange("quantity", e.target.value)
-                }
-                placeholder="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
           </div>
 
           <div className="flex justify-end space-x-3 mt-6">
@@ -1211,14 +1170,9 @@ const MainPart = () => {
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-gray-500">Quantity</h4>
-              <p className="mt-1 text-sm text-gray-900">
-                {selectedItem?.quantity}
-              </p>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Honda</h4>
+              <h4 className="text-sm font-medium text-gray-500">
+                Part No Induk
+              </h4>
               <p className="mt-1 text-sm text-gray-900">
                 {selectedItem?.honda_name}
               </p>
@@ -1239,7 +1193,7 @@ const MainPart = () => {
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-gray-500">EQ Supply 1</h4>
+              <h4 className="text-sm font-medium text-gray-500">Supply</h4>
               <p className="mt-1 text-sm text-gray-900">
                 {selectedItem?.eq_supply_name}
               </p>

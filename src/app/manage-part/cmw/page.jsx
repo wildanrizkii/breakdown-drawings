@@ -1,11 +1,11 @@
 import React from "react";
-import EQMaker1 from "@/components/UI/ManagePart/EQMaker1";
+import CMW from "@/components/UI/ManagePart/CMW";
 import Layout from "@/components/Layout";
 
 const page = () => {
   return (
     <Layout>
-      <EQMaker1 />
+      <CMW />
     </Layout>
   );
 };
