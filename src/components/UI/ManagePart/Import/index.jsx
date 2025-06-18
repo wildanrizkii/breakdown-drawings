@@ -151,7 +151,7 @@ const Import = () => {
 
       setAllData((prev) => [...prev, newItem]);
       closeAllModals();
-      toast.error("Data successfully added!");
+      toast.success("Data successfully added!");
     } catch (error) {
       toast.error("Error adding data: " + error.message);
     } finally {
