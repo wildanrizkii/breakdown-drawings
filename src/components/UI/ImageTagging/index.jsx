@@ -1095,19 +1095,22 @@ const ImageTaggingApp = () => {
       cart.forEach((item, index) => {
         const row = worksheet.addRow({
           no: index + 1,
-          partNoInduk: item.partNoInduk || item.partNo || "",
-          partNoAnak: item.partNoAnak || "",
-          partNoChw: item.partNo || "",
+          partNoInduk:
+            item.partNoInduk === "-"
+              ? ""
+              : item.partNoInduk || item.partNo || "",
+          partNoAnak: item.partNoAnak === "-" ? "" : item.partNoAnak || "",
+          partNoChw: item.partNo === "-" ? "" : item.partNo || "",
           partName: item.partName,
           quantity: item.quantity,
-          unit: item.unitName || "PCS",
-          supplier: item.supplier || "",
-          material: item.materialName || "",
-          impor: item.importName || "",
-          lokal: item.lokalName || "",
-          partNo: item.partNo || "",
-          maker: item.makerName || "",
-          remark: item.remark || "",
+          unit: item.unitName === "-" ? "" : item.unitName || "",
+          supplier: item.eqSupplyName === "-" ? "" : item.eqSupplyName || "",
+          material: item.materialName === "-" ? "" : item.materialName || "",
+          impor: item.importName === "-" ? "" : item.importName || "",
+          lokal: item.lokalName === "-" ? "" : item.lokalName || "",
+          partNo: item.partNo === "-" ? "" : item.partNo || "",
+          maker: item.makerName === "-" ? "" : item.makerName || "",
+          remark: item.remark === "-" ? "" : item.remark || "",
         });
 
         // Style data rows
@@ -2062,9 +2065,6 @@ const ImageTaggingApp = () => {
                               </div>
                               <div className="truncate">
                                 CMW: {item.cmwName}
-                              </div>
-                              <div className="truncate">
-                                Qty: {item.quantity}
                               </div>
                             </div>
                           </div>
