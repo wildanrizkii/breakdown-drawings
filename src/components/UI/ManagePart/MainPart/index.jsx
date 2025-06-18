@@ -1018,7 +1018,7 @@ const MainPart = () => {
             {/* CMW */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                CMW
+                Part No CMW
               </label>
               <AutoCompleteInput
                 value={formData.id_cmw}
@@ -1178,7 +1178,7 @@ const MainPart = () => {
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-gray-500">CMW</h4>
+              <h4 className="text-sm font-medium text-gray-500">Part No CMW</h4>
               <p className="mt-1 text-sm text-gray-900">
                 {selectedItem?.cmw_name}
               </p>
