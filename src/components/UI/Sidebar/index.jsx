@@ -40,46 +40,46 @@ const NAVIGATION_ITEMS = [
         href: "/manage-part/main-part",
         icon: <PiToolbox size={22} />,
       },
-      {
-        name: "Part No Induk",
-        href: "/manage-part/part-no-induk",
-        icon: <LuBox size={22} />,
-      },
-      {
-        name: "CMW",
-        href: "/manage-part/cmw",
-        icon: <LuCodesandbox size={22} />,
-      },
-      {
-        name: "Material",
-        href: "/manage-part/material",
-        icon: <LuPackage size={22} />,
-      },
-      {
-        name: "Maker",
-        href: "/manage-part/maker",
-        icon: <LuHammer size={22} />,
-      },
-      {
-        name: "Unit",
-        href: "/manage-part/unit",
-        icon: <LuRuler size={22} />,
-      },
-      {
-        name: "Lokal",
-        href: "/manage-part/lokal",
-        icon: <AiOutlineDatabase size={22} />,
-      },
-      {
-        name: "Import",
-        href: "/manage-part/import",
-        icon: <LiaDatabaseSolid size={22} />,
-      },
-      {
-        name: "Supply",
-        href: "/manage-part/supply",
-        icon: <LiaDatabaseSolid size={22} />,
-      },
+      // {
+      //   name: "Part No Induk",
+      //   href: "/manage-part/part-no-induk",
+      //   icon: <LuBox size={22} />,
+      // },
+      // {
+      //   name: "CMW",
+      //   href: "/manage-part/cmw",
+      //   icon: <LuCodesandbox size={22} />,
+      // },
+      // {
+      //   name: "Material",
+      //   href: "/manage-part/material",
+      //   icon: <LuPackage size={22} />,
+      // },
+      // {
+      //   name: "Maker",
+      //   href: "/manage-part/maker",
+      //   icon: <LuHammer size={22} />,
+      // },
+      // {
+      //   name: "Unit",
+      //   href: "/manage-part/unit",
+      //   icon: <LuRuler size={22} />,
+      // },
+      // {
+      //   name: "Lokal",
+      //   href: "/manage-part/lokal",
+      //   icon: <AiOutlineDatabase size={22} />,
+      // },
+      // {
+      //   name: "Import",
+      //   href: "/manage-part/import",
+      //   icon: <LiaDatabaseSolid size={22} />,
+      // },
+      // {
+      //   name: "Supply",
+      //   href: "/manage-part/supply",
+      //   icon: <LiaDatabaseSolid size={22} />,
+      // },
     ],
   },
   {

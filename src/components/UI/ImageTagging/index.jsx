@@ -40,6 +40,7 @@ const ImageTaggingApp = () => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   // New states for multi-item selection
+  // selectedItems now includes a quantity for each item
   const [selectedItems, setSelectedItems] = useState([]);
   const [editingTag, setEditingTag] = useState(null);
 
@@ -152,8 +153,7 @@ const ImageTaggingApp = () => {
         id: row.id || `main_part_${index}`,
         partName: row.part_name || "Unknown Part",
         partNo: row.part_no || "No Part Number",
-        quantity: row.quantity || 0,
-        // Original IDs
+        // quantity: row.quantity || 0, // This quantity is from the database, not for tagging
         idHonda: row.id_honda,
         idCmw: row.id_cmw,
         idUnit: row.id_unit,
@@ -162,7 +162,6 @@ const ImageTaggingApp = () => {
         idImport: row.id_import,
         idLokal: row.id_lokal,
         idMaker: row.id_maker,
-        // Resolved names
         hondaName: hondaMap.get(row.id_honda) || "-",
         cmwName: cmwMap.get(row.id_cmw) || "-",
         unitName: unitMap.get(row.id_unit) || "-",
@@ -189,30 +188,26 @@ const ImageTaggingApp = () => {
 
   // Function to recalculate cart based on all tags
   const recalculateCart = (updatedTags) => {
-    const itemCounts = new Map();
+    const itemQuantities = new Map();
 
-    // Count occurrences of each item across all tags
+    // Sum quantities for each item across all tags
     updatedTags.forEach((tag) => {
       tag.items.forEach((item) => {
-        const currentCount = itemCounts.get(item.id) || 0;
-        itemCounts.set(item.id, currentCount + 1);
+        const currentQuantity = itemQuantities.get(item.id) || 0;
+        itemQuantities.set(item.id, currentQuantity + item.quantity);
       });
     });
 
-    // Create cart with counted quantities
+    // Create new cart based on summed quantities
     const newCart = [];
-    const addedItems = new Set();
-
-    updatedTags.forEach((tag) => {
-      tag.items.forEach((item) => {
-        if (!addedItems.has(item.id)) {
-          addedItems.add(item.id);
-          newCart.push({
-            ...item,
-            quantity: itemCounts.get(item.id), // Use counted quantity instead of database quantity
-          });
-        }
-      });
+    itemQuantities.forEach((quantity, itemId) => {
+      const originalItem = databaseItems.find((dbItem) => dbItem.id === itemId);
+      if (originalItem) {
+        newCart.push({
+          ...originalItem,
+          quantity: quantity, // Use the summed quantity
+        });
+      }
     });
 
     setCart(newCart);
@@ -393,7 +388,7 @@ const ImageTaggingApp = () => {
       percentageY: percentageY,
     });
     setSearchQuery("");
-    setSelectedItems([]);
+    setSelectedItems([]); // Clear selected items when opening for new tag
     setEditingTag(null);
     setShowDropdown(true);
   };
@@ -435,7 +430,7 @@ const ImageTaggingApp = () => {
         x: offsetX - currentDisplayX,
         y: offsetY - currentDisplayY,
       });
-      setSelectedTagIndex(null);
+      setSelectedTagIndex(null); // Deselect tag when dragging starts
     }
   };
 
@@ -496,9 +491,26 @@ const ImageTaggingApp = () => {
       if (isSelected) {
         return prev.filter((selected) => selected.id !== item.id);
       } else {
-        return [...prev, item];
+        // Add item with a default quantity of 1
+        return [...prev, { ...item, quantity: 1 }];
       }
     });
+  };
+
+  const handleItemQuantityChange = (itemId, newQuantity) => {
+    setSelectedItems((prev) =>
+      prev.map((item) => {
+        // Parse the newQuantity to an integer, defaulting to 1 if it's not a valid number
+        const parsedQuantity = parseInt(newQuantity, 10) || 1;
+
+        // Ensure quantity is at least 1 and at most 100
+        const validatedQuantity = Math.min(1000, Math.max(1, parsedQuantity));
+
+        return item.id === itemId
+          ? { ...item, quantity: validatedQuantity }
+          : item;
+      })
+    );
   };
 
   const createTagWithSelectedItems = () => {
@@ -510,13 +522,15 @@ const ImageTaggingApp = () => {
       canvasY: dropdownPosition.canvasY,
       percentageX: dropdownPosition.percentageX,
       percentageY: dropdownPosition.percentageY,
-      items: [...selectedItems], // Array of items instead of single item
+      items: selectedItems.map((item) => ({
+        ...item,
+        quantity: item.quantity || 1,
+      })), // Ensure quantity is saved with item
     };
 
     const updatedTags = [...tags, newTag];
     setTags(updatedTags);
 
-    // Recalculate cart with new tags
     recalculateCart(updatedTags);
 
     setSelectedItems([]);
@@ -524,6 +538,7 @@ const ImageTaggingApp = () => {
   };
 
   const editTag = (tag) => {
+    // Populate selectedItems with the items from the tag, including their quantities
     setSelectedItems([...tag.items]);
     setEditingTag(tag.id);
     setDropdownPosition({
@@ -541,14 +556,20 @@ const ImageTaggingApp = () => {
   const updateTag = () => {
     if (selectedItems.length === 0 || !editingTag) return;
 
-    // Update tag with new items
     const updatedTags = tags.map((tag) =>
-      tag.id === editingTag ? { ...tag, items: [...selectedItems] } : tag
+      tag.id === editingTag
+        ? {
+            ...tag,
+            items: selectedItems.map((item) => ({
+              ...item,
+              quantity: item.quantity || 1,
+            })),
+          } // Update tag with new items and their quantities
+        : tag
     );
 
     setTags(updatedTags);
 
-    // Recalculate cart with updated tags
     recalculateCart(updatedTags);
 
     setSelectedItems([]);
@@ -560,78 +581,76 @@ const ImageTaggingApp = () => {
     const updatedTags = tags.filter((tag) => tag.id !== tagId);
     setTags(updatedTags);
 
-    // Recalculate cart after removing tag
     recalculateCart(updatedTags);
   };
 
+  // The `removeFromCart` and `updateCartQuantity` functions are not directly used
+  // to modify the `cart` state anymore, as `cart` is now a derived state
+  // from `tags` via `recalculateCart`.
+  // These functions could be removed or repurposed if direct cart modification is still desired.
+  // For this current implementation, they don't affect the quantity in the tags.
   const removeFromCart = (itemId) => {
-    setCart((prev) => prev.filter((item) => item.id !== itemId));
+    // This logic needs to be re-evaluated if direct cart removal is still needed.
+    // Currently, cart is derived from tags. Removing from cart here won't update tags.
+    // To remove an item from the cart, you'd need to remove it from all relevant tags.
+    toast.error(
+      "To remove an item from cart, delete its associated tag(s) on the image."
+    );
   };
 
   const updateCartQuantity = (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromCart(itemId);
-      return;
-    }
-    setCart((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
+    // Similar to removeFromCart, this needs re-evaluation.
+    // Changing cart quantity here won't update the quantities within tags.
+    toast.error(
+      "To update quantity, modify it directly in the tag creation/edit dropdown."
     );
   };
 
   const downloadTaggedImage = useCallback(() => {
     if (!uploadedImage || tags.length === 0) return;
 
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
     const img = new Image();
-
-    const roundRect = (ctx, x, y, width, height, radius) => {
-      ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.lineTo(x + width - radius, y);
-      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-      ctx.lineTo(x + width, y + height - radius);
-      ctx.quadraticCurveTo(
-        x + width,
-        y + height,
-        x + width - radius,
-        y + height
-      );
-      ctx.lineTo(x + radius, y + height);
-      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-      ctx.lineTo(x, y + radius);
-      ctx.quadraticCurveTo(x, y, x + radius, y);
-      ctx.closePath();
-    };
+    img.src = uploadedImage;
 
     img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
+      const originalImageWidth = img.naturalWidth;
+      const originalImageHeight = img.naturalHeight;
 
+      // Calculate canvas size to accommodate image and details section
+      // Adjusted detailSectionHeight as fewer columns mean less horizontal space,
+      // but vertical spacing per row remains.
+      const paddingBottom = 50; // Add this line for the desired padding at the bottom
+      const detailSectionHeight = tags.length * 25 + 100 + paddingBottom; // Estimate height for detail table (adjusted row height)
+      const totalCanvasHeight = originalImageHeight + detailSectionHeight;
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = originalImageWidth;
+      canvas.height = totalCanvasHeight;
+
+      // Draw the original image at the top
       ctx.drawImage(img, 0, 0);
 
-      const scaleFactor = Math.min(img.width, img.height) / 500;
-      const minScale = 1;
-      const maxScale = 8;
-      const scale = Math.max(minScale, Math.min(maxScale, scaleFactor));
+      // Scale factor for tag circles based on image size
+      const scaleFactor =
+        Math.min(originalImageWidth, originalImageHeight) / 500;
+      const minCircleRadius = 15;
+      const maxCircleRadius = 25;
+      const radius = Math.max(
+        minCircleRadius,
+        Math.min(maxCircleRadius, 15 * scaleFactor)
+      );
+      const strokeWidth = 4 * scaleFactor;
+      const numberFontSize = Math.max(16, 16 * scaleFactor);
 
+      // Draw tags on the image
       tags.forEach((tag, index) => {
-        const radius = 15 * scale;
-        const strokeWidth = 4 * scale;
-        const numberFontSize = Math.max(16 * scale, 16);
-        const labelFontSize = Math.max(18 * scale, 14);
-        const priceFontSize = Math.max(14 * scale, 12);
-        const labelOffset = 25 * scale;
-        const padding = 12 * scale;
-        const borderRadius = 8 * scale;
-
         // Draw shadow for tag circle
         ctx.beginPath();
         ctx.arc(
-          tag.canvasX + 2 * scale,
-          tag.canvasY + 2 * scale,
+          tag.canvasX + 2 * scaleFactor,
+          tag.canvasY + 2 * scaleFactor,
           radius,
           0,
           2 * Math.PI
@@ -662,7 +681,7 @@ const ImageTaggingApp = () => {
         ctx.strokeStyle = "#FFFFFF";
         ctx.lineWidth = strokeWidth;
         ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-        ctx.shadowBlur = 6 * scale;
+        ctx.shadowBlur = 6 * scaleFactor;
         ctx.stroke();
         ctx.shadowBlur = 0;
 
@@ -673,161 +692,90 @@ const ImageTaggingApp = () => {
         ctx.textBaseline = "middle";
 
         ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-        ctx.shadowBlur = 3 * scale;
-        ctx.shadowOffsetX = 1 * scale;
-        ctx.shadowOffsetY = 1 * scale;
+        ctx.shadowBlur = 3 * scaleFactor;
+        ctx.shadowOffsetX = 1 * scaleFactor;
+        ctx.shadowOffsetY = 1 * scaleFactor;
         ctx.fillText((index + 1).toString(), tag.canvasX, tag.canvasY);
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-
-        // Create label text for multiple items
-        const itemNames = tag.items.map((item) => item.partName).join(", ");
-        const labelText =
-          tag.items.length > 1
-            ? `${tag.items.length} Items: ${
-                itemNames.length > 30
-                  ? itemNames.substring(0, 30) + "..."
-                  : itemNames
-              }`
-            : tag.items[0].partName;
-
-        const codeText =
-          tag.items.length > 1
-            ? `Part No: ${tag.items.map((item) => item.partNo).join(", ")}`
-            : `Part No: ${tag.items[0].partNo}`;
-
-        // Measure text
-        ctx.font = `bold ${labelFontSize}px Arial, sans-serif`;
-        const labelWidth = ctx.measureText(labelText).width;
-        ctx.font = `${priceFontSize}px Arial, sans-serif`;
-        const codeWidth = ctx.measureText(codeText).width;
-
-        const maxTextWidth = Math.max(labelWidth, codeWidth);
-        const labelHeight = labelFontSize + priceFontSize + padding * 1.5;
-
-        // Position calculations (same as before)
-        const imageDisplayWidth = imageRef.current?.clientWidth || img.width;
-        const imageDisplayHeight = imageRef.current?.clientHeight || img.height;
-
-        const displayXInCanvas = tag.percentageX * img.width;
-        const displayYInCanvas = tag.percentageY * img.height;
-
-        const wouldExceedRight =
-          displayXInCanvas + maxTextWidth + padding * 2 + labelOffset >
-          img.width;
-        const wouldExceedBottom =
-          displayYInCanvas + labelHeight / 2 > img.height;
-        const wouldExceedTop = displayYInCanvas - labelHeight / 2 < 0;
-
-        let labelX, labelY, textAlign;
-
-        if (wouldExceedRight) {
-          labelX = tag.canvasX - labelOffset;
-          textAlign = "right";
-        } else {
-          labelX = tag.canvasX + labelOffset;
-          textAlign = "left";
-        }
-
-        if (wouldExceedBottom && !wouldExceedTop) {
-          labelY = displayYInCanvas - labelOffset;
-        } else if (wouldExceedTop && !wouldExceedBottom) {
-          labelY = displayYInCanvas + labelOffset;
-        } else {
-          labelY = displayYInCanvas;
-        }
-
-        let bgX, bgY;
-        if (textAlign === "right") {
-          bgX = labelX - maxTextWidth - padding * 2;
-        } else {
-          bgX = labelX - padding;
-        }
-        bgY = labelY - labelHeight / 2;
-
-        // Draw shadow for background
-        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-        roundRect(
-          ctx,
-          bgX + 3 * scale,
-          bgY + 3 * scale,
-          maxTextWidth + padding * 2,
-          labelHeight,
-          borderRadius
-        );
-        ctx.fill();
-
-        // Draw background
-        const labelGradient = ctx.createLinearGradient(
-          bgX,
-          bgY,
-          bgX,
-          bgY + labelHeight
-        );
-        labelGradient.addColorStop(0, "rgba(0, 0, 0, 0.9)");
-        labelGradient.addColorStop(1, "rgba(0, 0, 0, 0.7)");
-
-        ctx.fillStyle = labelGradient;
-        roundRect(
-          ctx,
-          bgX,
-          bgY,
-          maxTextWidth + padding * 2,
-          labelHeight,
-          borderRadius
-        );
-        ctx.fill();
-
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
-        ctx.lineWidth = 1 * scale;
-        roundRect(
-          ctx,
-          bgX,
-          bgY,
-          maxTextWidth + padding * 2,
-          labelHeight,
-          borderRadius
-        );
-        ctx.stroke();
-
-        // Draw text
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = `bold ${labelFontSize}px Arial, sans-serif`;
-        ctx.textAlign = textAlign === "right" ? "right" : "left";
-        ctx.textBaseline = "top";
-
-        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
-        ctx.shadowBlur = 2 * scale;
-        ctx.shadowOffsetX = 1 * scale;
-        ctx.shadowOffsetY = 1 * scale;
-
-        const nameX = textAlign === "right" ? labelX - padding : labelX;
-        ctx.fillText(labelText, nameX, bgY + padding);
-
-        ctx.fillStyle = "#FFD700";
-        ctx.font = `${priceFontSize}px Arial, sans-serif`;
-        ctx.fillText(
-          codeText,
-          nameX,
-          bgY + padding + labelFontSize + 4 * scale
-        );
-
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
       });
 
+      // --- Draw Details Section Below the Image ---
+      let startY = originalImageHeight + 30; // Starting Y position for the details table
+      const marginX = 50; // Left and right margin for the table
+      const tableWidth = originalImageWidth - 2 * marginX;
+
+      // Draw a white background for the details section
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, originalImageHeight, canvas.width, detailSectionHeight);
+
+      // Title for the details section
+      ctx.fillStyle = "#000000";
+      ctx.font = "bold 20px Arial, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("Item Details:", marginX, startY);
+      startY += 40;
+
+      // Dynamic column widths based on tableWidth for only 4 columns
+      const colNoWidth = tableWidth * 0.1; // 10% for "No."
+      const colPartNoWidth = tableWidth * 0.3; // 30% for "Part No."
+      const colPartNameWidth = tableWidth * 0.4; // 40% for "Part Name"
+      const colQtyWidth = tableWidth * 0.2; // 20% for "Qty"
+
+      // Calculate X positions for columns
+      const colNoX = marginX;
+      const colPartNoX = colNoX + colNoWidth;
+      const colPartNameX = colPartNoX + colPartNoWidth;
+      const colQtyX = colPartNameX + colPartNameWidth;
+
+      // Table Headers
+      ctx.fillStyle = "#000000"; // Changed to black
+      ctx.font = "bold 16px Arial, sans-serif";
+      const headerY = startY;
+
+      ctx.fillText("No.", colNoX, headerY);
+      ctx.fillText("Part No.", colPartNoX, headerY);
+      ctx.fillText("Part Name", colPartNameX, headerY);
+      ctx.fillText("Qty", colQtyX, headerY);
+      startY += 10; // Extra spacing for header underline
+
+      // Draw a line under headers
+      ctx.strokeStyle = "#CCCCCC";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(marginX, startY);
+      ctx.lineTo(colQtyX + colQtyWidth, startY); // Extend line to the end of Qty column
+      ctx.stroke();
+      startY += 15; // Space after header line
+
+      // Draw each tagged item's details
+      tags.forEach((tag, index) => {
+        // Iterate through items within each tag
+        tag.items.forEach((item) => {
+          ctx.fillStyle = "#000000"; // Changed to black
+          ctx.font = "14px Arial, sans-serif";
+          ctx.textAlign = "left";
+
+          // Line for each item
+          ctx.fillText((index + 1).toString(), colNoX, startY); // Use tag index as "No."
+          ctx.fillText(item.partNo, colPartNoX, startY);
+          ctx.fillText(item.partName, colPartNameX, startY);
+          ctx.fillText(item.quantity.toString(), colQtyX, startY);
+
+          startY += 25; // Move to the next line for the next item
+        });
+      });
+
+      // Download the combined image
       const link = document.createElement("a");
-      link.download = "tagged-image.png";
-      link.href = canvas.toDataURL();
+      link.download = "tagged-image-with-details.png";
+      link.href = canvas.toDataURL("image/png");
       link.click();
     };
 
-    img.src = uploadedImage;
-
     toast.success("Your image has been saved to your device");
-  }, [uploadedImage, tags]);
+  }, [uploadedImage, tags]); // Dependencies updated to include tags
 
   // Handle export form input changes
   const handleExportFormChange = (field, value) => {
@@ -1019,6 +967,7 @@ const ImageTaggingApp = () => {
 
       // Main table header - Row 1
       const tableStartRow = 9;
+      const dataStartRow = tableStartRow + 2; // Data starts after two header rows
 
       // Header Row 1 (Row 9)
       const headerRow1 = worksheet.getRow(tableStartRow);
@@ -1091,16 +1040,12 @@ const ImageTaggingApp = () => {
       });
 
       // Add data rows
-      const dataStartRow = tableStartRow + 2;
       cart.forEach((item, index) => {
         const row = worksheet.addRow({
           no: index + 1,
-          partNoInduk:
-            item.hondaName === "-"
-              ? ""
-              : item.hondaName || item.hondaName || "",
-          partNoAnak: item.partNoAnak === "-" ? "" : item.partNoAnak || "",
-          partNoChw: item.partNo === "-" ? "" : item.partNo || "",
+          partNoInduk: item.hondaName === "-" ? "" : item.hondaName || "",
+          partNoAnak: item.cmwName === "-" ? "" : item.cmwName || "", // CMW is Part No Anak in the table header
+          partNoChw: item.partNo === "-" ? "" : item.partNo || "", // This refers to the Part No in your database, which is "Part No CMW" in the Excel table
           partName: item.partName,
           quantity: item.quantity,
           unit: item.unitName === "-" ? "" : item.unitName || "",
@@ -1108,7 +1053,7 @@ const ImageTaggingApp = () => {
           material: item.materialName === "-" ? "" : item.materialName || "",
           impor: item.importName === "-" ? "" : item.importName || "",
           lokal: item.lokalName === "-" ? "" : item.lokalName || "",
-          partNo: item.partNo === "-" ? "" : item.partNo || "",
+          partNo: item.partNo === "-" ? "" : item.partNo || "", // This appears again, ensure it's correct for the "PART NO" column in the Excel template
           maker: item.makerName === "-" ? "" : item.makerName || "",
           remark: item.remark === "-" ? "" : item.remark || "",
         });
@@ -1152,14 +1097,14 @@ const ImageTaggingApp = () => {
         let col = approvalCols[index === 2 ? 3 : index];
         worksheet.getCell(`${col}${approvalStartRow}`).value = header;
         worksheet.getCell(`${col}${approvalStartRow}`).font = { bold: true };
-        worksheet.getCell(`${col}${approvalStartRow}`).alignment = {
-          horizontal: "center",
-          vertical: "middle",
-        };
         worksheet.getCell(`${col}${approvalStartRow}`).fill = {
           type: "pattern",
           pattern: "solid",
           fgColor: { argb: "E5E7EB" },
+        };
+        worksheet.getCell(`${col}${approvalStartRow}`).alignment = {
+          horizontal: "center",
+          vertical: "middle",
         };
         worksheet.getCell(`${col}${approvalStartRow}`).border = {
           top: { style: "thin" },
@@ -1418,17 +1363,20 @@ const ImageTaggingApp = () => {
                                 >
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-medium text-gray-800 truncate">
-                                      {item.partName}
+                                      {item.partNo}
                                     </span>
                                   </div>
                                   <div className="text-xs text-gray-500 ml-5">
-                                    Part No: {item.partNo}
+                                    Part Name: {item.partName}
                                   </div>
                                   <div className="text-xs text-gray-500 ml-5">
                                     Part No Induk: {item.hondaName}
                                   </div>
                                   <div className="text-xs text-gray-500 ml-5">
                                     CMW: {item.cmwName}
+                                  </div>
+                                  <div className="text-xs text-gray-500 ml-5">
+                                    Quantity: {item.quantity}
                                   </div>
                                 </div>
                               ))}
@@ -1944,7 +1892,7 @@ const ImageTaggingApp = () => {
                       !exportFormData.customer ||
                       !exportFormData.project
                         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
                     }`}
                   >
                     <FileSpreadsheet size={16} />
@@ -2001,28 +1949,71 @@ const ImageTaggingApp = () => {
               </div>
             </div>
 
-            {/* Selected Items Preview - Fixed Height */}
+            {/* Selected Items Preview - Fixed Height with Quantity Input */}
             {selectedItems.length > 0 && (
               <div className="flex-shrink-0 p-3 bg-blue-50 border-b border-gray-200">
                 <div className="text-xs text-blue-700 font-medium mb-2">
                   Selected Items ({selectedItems.length}):
                 </div>
-                <div className="overflow-y-auto" style={{ maxHeight: "80px" }}>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedItems.map((item, itemIndex) => (
-                      <span
-                        key={`selected-${item.id}-${itemIndex}`} // Compound key untuk selected items
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs flex-shrink-0"
-                        style={{ maxWidth: "160px" }}
+                <div className="overflow-y-auto" style={{ maxHeight: "120px" }}>
+                  <div className="flex flex-col gap-2">
+                    {selectedItems.map((item) => (
+                      <div
+                        key={`selected-${item.id}`}
+                        className="flex items-center justify-between px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
                       >
-                        <span className="truncate">{item.partName}</span>
-                        <button
-                          onClick={() => toggleItemSelection(item)}
-                          className="hover:text-blue-600 flex-shrink-0"
-                        >
-                          <X size={12} />
-                        </button>
-                      </span>
+                        <span className="truncate flex-1">{item.partName}</span>
+                        <div className="flex items-center gap-1 ml-2">
+                          {/* Minus Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent closing dropdown
+                              handleItemQuantityChange(
+                                item.id,
+                                Math.max(1, item.quantity - 1)
+                              ); // Ensure quantity doesn't go below 1
+                            }}
+                            className="px-2 py-0.5 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800"
+                          >
+                            -
+                          </button>
+
+                          <label htmlFor={`qty-${item.id}`} className="sr-only">
+                            Quantity for {item.partName}
+                          </label>
+                          <input
+                            id={`qty-${item.id}`}
+                            type="text"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              handleItemQuantityChange(item.id, e.target.value)
+                            }
+                            onClick={(e) => e.stopPropagation()} // Prevent closing dropdown
+                            className="w-16 px-1 py-0.5 text-center border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800"
+                          />
+
+                          {/* Plus Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent closing dropdown
+                              handleItemQuantityChange(
+                                item.id,
+                                item.quantity + 1
+                              );
+                            }}
+                            className="px-2 py-0.5 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800"
+                          >
+                            +
+                          </button>
+
+                          <button
+                            onClick={() => toggleItemSelection(item)}
+                            className="hover:text-blue-600 flex-shrink-0"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -2054,11 +2045,11 @@ const ImageTaggingApp = () => {
                         <div className="flex items-start gap-2 flex-1 min-w-0">
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm text-gray-800 truncate mb-1">
-                              {item.partName}
+                              {item.partNo}
                             </div>
                             <div className="text-xs text-gray-600 space-y-0.5">
                               <div className="truncate">
-                                Part No: {item.partNo}
+                                Part Name: {item.partName}
                               </div>
                               <div className="truncate">
                                 Part No Induk: {item.hondaName}
