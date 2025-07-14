@@ -607,7 +607,7 @@ const ImageTaggingApp = () => {
   };
 
   const downloadTaggedImage = useCallback(() => {
-    if (!uploadedImage || tags.length === 0) return;
+    if (!uploadedImage || !imageRef.current) return;
 
     const img = new Image();
     img.src = uploadedImage;
@@ -616,41 +616,32 @@ const ImageTaggingApp = () => {
       const originalImageWidth = img.naturalWidth;
       const originalImageHeight = img.naturalHeight;
 
-      // Calculate canvas size to accommodate image and details section
-      // Adjusted detailSectionHeight as fewer columns mean less horizontal space,
-      // but vertical spacing per row remains.
-      const paddingBottom = 50; // Add this line for the desired padding at the bottom
-      const detailSectionHeight = tags.length * 25 + 100 + paddingBottom; // Estimate height for detail table (adjusted row height)
-      const totalCanvasHeight = originalImageHeight + detailSectionHeight;
-
       const canvas = document.createElement("canvas");
+      canvas.width = originalImageWidth;
+      canvas.height = originalImageHeight;
       const ctx = canvas.getContext("2d");
 
-      canvas.width = originalImageWidth;
-      canvas.height = totalCanvasHeight;
+      ctx.drawImage(img, 0, 0, originalImageWidth, originalImageHeight);
 
-      // Draw the original image at the top
-      ctx.drawImage(img, 0, 0);
-
-      // Scale factor for tag circles based on image size
       const scaleFactor =
         Math.min(originalImageWidth, originalImageHeight) / 500;
-      const minCircleRadius = 15;
-      const maxCircleRadius = 25;
-      const radius = Math.max(
-        minCircleRadius,
-        Math.min(maxCircleRadius, 15 * scaleFactor)
-      );
+      const radius = Math.max(15, Math.min(25, 15 * scaleFactor));
       const strokeWidth = 4 * scaleFactor;
       const numberFontSize = Math.max(16, 16 * scaleFactor);
+      const boxPadding = 10; // Reduced padding
+      const lineHeight = 18;
+      const itemFontSize = 12;
+      const boxWidth = 180; // Adjusted box width
 
-      // Draw tags on the image
       tags.forEach((tag, index) => {
-        // Draw shadow for tag circle
+        const tagDrawX = tag.canvasX;
+        const tagDrawY = tag.canvasY;
+
+        // Draw the tag circle
         ctx.beginPath();
         ctx.arc(
-          tag.canvasX + 2 * scaleFactor,
-          tag.canvasY + 2 * scaleFactor,
+          tagDrawX + 2 * scaleFactor,
+          tagDrawY + 2 * scaleFactor,
           radius,
           0,
           2 * Math.PI
@@ -658,124 +649,85 @@ const ImageTaggingApp = () => {
         ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
         ctx.fill();
 
-        // Use color from first item or default color
-        const tagColor = tag.items[0]?.color || "#3B82F6";
-
-        // Draw tag circle with gradient
-        const gradient = ctx.createRadialGradient(
-          tag.canvasX - radius * 0.3,
-          tag.canvasY - radius * 0.3,
-          0,
-          tag.canvasX,
-          tag.canvasY,
-          radius
-        );
-        gradient.addColorStop(0, tagColor + "FF");
-        gradient.addColorStop(1, tagColor + "CC");
-
+        const tagColor =
+          tag.items.length > 0
+            ? tag.items.find((item) => item.color)?.color || "#3B82F6"
+            : "#3B82F6";
         ctx.beginPath();
-        ctx.arc(tag.canvasX, tag.canvasY, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = gradient;
+        ctx.arc(tagDrawX, tagDrawY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = tagColor;
         ctx.fill();
-
         ctx.strokeStyle = "#FFFFFF";
         ctx.lineWidth = strokeWidth;
-        ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-        ctx.shadowBlur = 6 * scaleFactor;
         ctx.stroke();
-        ctx.shadowBlur = 0;
 
-        // Draw number
         ctx.fillStyle = "#FFFFFF";
         ctx.font = `bold ${numberFontSize}px Arial, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-
         ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
         ctx.shadowBlur = 3 * scaleFactor;
-        ctx.shadowOffsetX = 1 * scaleFactor;
-        ctx.shadowOffsetY = 1 * scaleFactor;
-        ctx.fillText((index + 1).toString(), tag.canvasX, tag.canvasY);
+        ctx.fillText((index + 1).toString(), tagDrawX, tagDrawY);
         ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-      });
 
-      // --- Draw Details Section Below the Image ---
-      let startY = originalImageHeight + 30; // Starting Y position for the details table
-      const marginX = 50; // Left and right margin for the table
-      const tableWidth = originalImageWidth - 2 * marginX;
+        // --- Info Box ---
+        let boxHeight = tag.items.length * lineHeight + boxPadding * 2;
+        let boxX = tagDrawX + radius + 10;
+        let boxY = tagDrawY - boxHeight / 2;
 
-      // Draw a white background for the details section
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, originalImageHeight, canvas.width, detailSectionHeight);
+        if (boxX + boxWidth > originalImageWidth) {
+          boxX = tagDrawX - radius - 10 - boxWidth;
+        }
+        if (boxY < 0) {
+          boxY = 5;
+        }
+        if (boxY + boxHeight > originalImageHeight) {
+          boxY = originalImageHeight - boxHeight - 5;
+        }
 
-      // Title for the details section
-      ctx.fillStyle = "#000000";
-      ctx.font = "bold 20px Arial, sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText("Item Details:", marginX, startY);
-      startY += 40;
+        ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
+        ctx.shadowBlur = 5;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "#E5E7EB";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
-      // Dynamic column widths based on tableWidth for only 4 columns
-      const colNoWidth = tableWidth * 0.1; // 10% for "No."
-      const colPartNoWidth = tableWidth * 0.3; // 30% for "Part No."
-      const colPartNameWidth = tableWidth * 0.4; // 40% for "Part Name"
-      const colQtyWidth = tableWidth * 0.2; // 20% for "Qty"
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        let currentY = boxY + boxPadding;
 
-      // Calculate X positions for columns
-      const colNoX = marginX;
-      const colPartNoX = colNoX + colNoWidth;
-      const colPartNameX = colPartNoX + colPartNoWidth;
-      const colQtyX = colPartNameX + colPartNameWidth;
+        // Removed "Tag [no] Items:" text
 
-      // Table Headers
-      ctx.fillStyle = "#000000"; // Changed to black
-      ctx.font = "bold 16px Arial, sans-serif";
-      const headerY = startY;
-
-      ctx.fillText("No.", colNoX, headerY);
-      ctx.fillText("Part No.", colPartNoX, headerY);
-      ctx.fillText("Part Name", colPartNameX, headerY);
-      ctx.fillText("Qty", colQtyX, headerY);
-      startY += 10; // Extra spacing for header underline
-
-      // Draw a line under headers
-      ctx.strokeStyle = "#CCCCCC";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(marginX, startY);
-      ctx.lineTo(colQtyX + colQtyWidth, startY); // Extend line to the end of Qty column
-      ctx.stroke();
-      startY += 15; // Space after header line
-
-      // Draw each tagged item's details
-      tags.forEach((tag, index) => {
-        // Iterate through items within each tag
         tag.items.forEach((item) => {
-          ctx.fillStyle = "#000000"; // Changed to black
-          ctx.font = "14px Arial, sans-serif";
-          ctx.textAlign = "left";
-
-          // Line for each item
-          ctx.fillText((index + 1).toString(), colNoX, startY); // Use tag index as "No."
-          ctx.fillText(item.partNo, colPartNoX, startY);
-          ctx.fillText(item.partName, colPartNameX, startY);
-          ctx.fillText(item.quantity.toString(), colQtyX, startY);
-
-          startY += 25; // Move to the next line for the next item
+          ctx.fillStyle = "#374151";
+          ctx.font = `normal ${itemFontSize}px Arial, sans-serif`;
+          const displayName = `${item.partName} (Qty: ${item.quantity})`;
+          let truncatedName = displayName;
+          if (ctx.measureText(displayName).width > boxWidth - boxPadding * 2) {
+            let text = displayName;
+            while (
+              ctx.measureText(text + "...").width >
+              boxWidth - boxPadding * 2
+            ) {
+              text = text.slice(0, -1);
+            }
+            truncatedName = text + "...";
+          }
+          ctx.fillText(truncatedName, boxX + boxPadding, currentY);
+          currentY += lineHeight;
         });
       });
 
-      // Download the combined image
       const link = document.createElement("a");
-      link.download = "tagged-image-with-details.png";
+      link.download = "tagged-drawing-with-items.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
-    };
 
-    toast.success("Your image has been saved to your device");
-  }, [uploadedImage, tags]); // Dependencies updated to include tags
+      toast.success("Gambar yang ditandai beserta item telah disimpan!");
+    };
+  }, [uploadedImage, tags]);
 
   // Handle export form input changes
   const handleExportFormChange = (field, value) => {
