@@ -623,20 +623,27 @@ const ImageTaggingApp = () => {
 
       ctx.drawImage(img, 0, 0, originalImageWidth, originalImageHeight);
 
-      const scaleFactor =
-        Math.min(originalImageWidth, originalImageHeight) / 500;
-      const radius = Math.max(15, Math.min(25, 15 * scaleFactor));
-      const strokeWidth = 4 * scaleFactor;
+      // Hitung scaleFactor berdasarkan lebar gambar untuk penskalaan yang lebih konsisten
+      // Pertimbangkan basis skala yang masuk akal, misalnya 1000px sebagai lebar standar
+      const baseWidth = 1000; // Anda bisa menyesuaikan nilai ini
+      const scaleFactor = originalImageWidth / baseWidth;
+
+      // Penskalaan untuk elemen tag
+      const radius = Math.max(15, 15 * scaleFactor);
+      const strokeWidth = Math.max(2, 4 * scaleFactor); // Minimum stroke width
       const numberFontSize = Math.max(16, 16 * scaleFactor);
-      const boxPadding = 10; // Reduced padding
-      const lineHeight = 18;
-      const itemFontSize = 12;
-      const boxWidth = 180; // Adjusted box width
+
+      // Penskalaan untuk info box dan teks item
+      const itemFontSize = Math.max(12, 12 * scaleFactor); // Pastikan ini juga diskalakan
+      const lineHeight = Math.max(18, 18 * scaleFactor); // Skalakan tinggi baris
+      const boxPadding = Math.max(8, 10 * scaleFactor); // Skalakan padding
+      const boxWidth = Math.max(150, 180 * scaleFactor); // Skalakan lebar box
 
       tags.forEach((tag, index) => {
         const tagDrawX = tag.canvasX;
         const tagDrawY = tag.canvasY;
 
+        // ... (kode untuk menggambar lingkaran tag dan nomor, tidak berubah) ...
         // Draw the tag circle
         ctx.beginPath();
         ctx.arc(
@@ -671,39 +678,40 @@ const ImageTaggingApp = () => {
         ctx.shadowBlur = 0;
 
         // --- Info Box ---
+        // Gunakan nilai yang sudah diskalakan
         let boxHeight = tag.items.length * lineHeight + boxPadding * 2;
-        let boxX = tagDrawX + radius + 10;
+        let boxX = tagDrawX + radius + 10 * scaleFactor; // Penskalaan jarak dari tag
         let boxY = tagDrawY - boxHeight / 2;
 
+        // Penyesuaian posisi box agar tidak keluar dari batas gambar
         if (boxX + boxWidth > originalImageWidth) {
-          boxX = tagDrawX - radius - 10 - boxWidth;
+          boxX = tagDrawX - radius - 10 * scaleFactor - boxWidth;
         }
         if (boxY < 0) {
-          boxY = 5;
+          boxY = 5 * scaleFactor; // Skalakan juga margin dari tepi
         }
         if (boxY + boxHeight > originalImageHeight) {
-          boxY = originalImageHeight - boxHeight - 5;
+          boxY = originalImageHeight - boxHeight - 5 * scaleFactor; // Skalakan juga margin dari tepi
         }
 
         ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
-        ctx.shadowBlur = 5;
+        ctx.shadowBlur = 5 * scaleFactor; // Skalakan blur bayangan
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
         ctx.shadowBlur = 0;
         ctx.strokeStyle = "#E5E7EB";
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 * scaleFactor; // Skalakan lebar border
         ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
         let currentY = boxY + boxPadding;
 
-        // Removed "Tag [no] Items:" text
-
         tag.items.forEach((item) => {
           ctx.fillStyle = "#374151";
+          // Gunakan itemFontSize yang sudah diskalakan
           ctx.font = `normal ${itemFontSize}px Arial, sans-serif`;
-          const displayName = `${item.partName} (Qty: ${item.quantity})`;
+          const displayName = `${item.partNo} (Qty: ${item.quantity})`;
           let truncatedName = displayName;
           if (ctx.measureText(displayName).width > boxWidth - boxPadding * 2) {
             let text = displayName;
@@ -723,13 +731,12 @@ const ImageTaggingApp = () => {
       const link = document.createElement("a");
       const now = new Date();
       const year = now.getFullYear();
-      const month = (now.getMonth() + 1).toString().padStart(2, "0"); // Bulan dimulai dari 0
+      const month = (now.getMonth() + 1).toString().padStart(2, "0");
       const day = now.getDate().toString().padStart(2, "0");
       const hours = now.getHours().toString().padStart(2, "0");
       const minutes = now.getMinutes().toString().padStart(2, "0");
       const seconds = now.getSeconds().toString().padStart(2, "0");
 
-      // Bentuk nama file yang unik
       link.download = `tagged-${year}${month}${day}-${hours}${minutes}${seconds}.png`;
 
       link.href = canvas.toDataURL("image/png");
